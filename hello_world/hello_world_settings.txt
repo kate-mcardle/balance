@@ -1,0 +1,9 @@
+world gld
+agent lookup
+electricity_price 0.04580
+timestep 60
+preferred_low_temp 67
+preferred_high_temp 74
+min_temp 62
+max_temp 77
+budget 24.50
