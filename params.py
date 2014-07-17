@@ -24,21 +24,23 @@ class Params:
   def initialize_world(self):
     return getattr(self, 'initialize_%s' % self.world)()
 
+  def initialize_gld(self):
+    print "initializing GridLAB-D"
+    return worlds.GldWorld(self)
+
   def initialize_ecobee(self):
     print "initializing Ecobee"
     return worlds.EcobeeWorld(self)
 
-  def initialize_gld(self):
-    print "initializing GridLAB-D"
-    return worlds.GldWorld(self)
+
 
   def initialize_agent(self):
     return getattr(self, 'initialize_%s_agent' % self.agent)()
 
   def initialize_lookup_agent(self):
     print "initializing lookup agent"
-    return agents.LookupAgent()
+    return agents.LookupAgent(self)
 
   def initialize_qlearn_agent(self):
     print "initializing qlearning agent"
-    return agents.QLearnAgent()
+    return agents.QLearnAgent(self)

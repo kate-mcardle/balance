@@ -31,11 +31,12 @@ Info needed from sim input file:
   timezone (eg CST+6CDT)
   tmyfilename
   house_size (sq ft)
-  heating_type (RESISTANCE for electric, or GAS)
+  heater_type (RESISTANCE for electric, or GAS)
 
 '''
 
 import sys
+from pprint import pprint # for debugging
 
 import params
 import worlds
@@ -44,6 +45,7 @@ import agents
 def main(argv):
   run_params = params.Params(argv[1])
   world = run_params.initialize_world()
+  pprint (vars(world))
   agent = run_params.initialize_agent()
 
   # Run first time step separately (TODO: is it necessary for this to be separate? probably...)

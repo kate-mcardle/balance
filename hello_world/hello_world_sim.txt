@@ -1,0 +1,7 @@
+start_year 2013
+start_month 04
+n_months 1
+timezone CST+6CDT
+tmyfilename TX-Austin.tmy2
+house_size 1000
+heater_type RESISTANCE
