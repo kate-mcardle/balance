@@ -60,10 +60,11 @@ def main(argv):
   # LOOP for each time step until end time is reached, if applicable
   while True:
     if world.is_new_timestep():
-      world.update_state()
-      agent.set_next_setpoints()
-
-    break
+      world.update_state(run_params)
+      heating_setpoint, cooling_setpoint = agent.get_next_setpoints()
+      world.set_next_setpoints(heating_setpoint, cooling_setpoint)
+    if world.sim_complete:
+      break
 
   world.final_cleanup(run_params)
   # For runtime tracking:

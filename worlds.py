@@ -18,6 +18,7 @@ class World:
 class GldWorld(World):
   def __init__(self, run_params):
     print "gld world!"
+    self.ts_count = 0
     self.house_name = 'house_' + run_params.run_name
     sim_file = run_params.run_name + '/' + run_params.run_name + '_sim.txt'
     with open(sim_file, 'rb') as f:
@@ -42,6 +43,8 @@ class GldWorld(World):
     self.sim_end = self.end_control + timedelta(hours = 1)
     self.sim_end_string = util.datetimeTOstring(self.sim_end, self.timezone_short)
     self.first_pause_at = util.datetimeTOstring(self.start_control, self.timezone_short)
+    self.sim_complete = False
+    self.sim_time = ""
 
     # Format files needed
     for file_description in ['energy_use_file', 'cooling_temps_file', 'heating_temps_file', 'indoor_temps_file', 'floor_player_file']:
@@ -91,19 +94,84 @@ class GldWorld(World):
     self.n_timesteps_in_day = 1440.0 / run_params.timestep
     self.n_timesteps_passed = -1
     self.current_month_index = 0
+    self.last_timestep_energy_used = 0.0
     self.hvac_load = 0.0
     self.heating_setpoint = run_params.preferred_low_temp
     self.cooling_setpoint = run_params.preferred_high_temp
     self.last_mode = "COOL"
 
-  def is_new_timestep(self):
-    # TODO
-    pass
+  def get_value(self, prop):
+    args_get_value = ["wget", "http://localhost:6267/"+self.house_name+"/"+prop, "-q", "-O", "-"]
+    cmd_get_value = subprocess.Popen(args_get_value, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    cmd_out, cmd_err = cmd_get_value.communicate()
+    match = re.search(r'<value>.+</value>', cmd_out)
+    if match:
+      return match.group()[7:-8]
+    else:
+      print "Didn't find property ", prop, " in server request result!!"
+      exit()    
 
-  def update_state(self):
+  def is_new_timestep(self):
+    # Poll for clock time to be >= pauseat time (get value of global variable 'clock'):
+    args_check_clock = ["wget", "http://localhost:6267/clock", "-q", "-O", "-"]
+    cmd_check_clock = subprocess.Popen(args_check_clock, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    cmd_out, cmd_err = cmd_check_clock.communicate() # waits for cmd_check_clock to finish before returning
+    match = re.search(r'<value>.+</value>', cmd_out)
+    if match: 
+      sim_time = parser.parse(match.group()[7:-8])
+      if (sim_time >= self.pause_time): # Simulation has been paused
+        # Need to do housekeeping due to GridLAB-D's syncing
+        clock_delta = sim_time - self.last_pause_time
+        secs = clock_delta.total_seconds()
+        self.last_timestep_energy_used += self.hvac_load * secs * (1.0/3600)
+        self.hvac_load = float(self.get_value("hvac_load"))
+        mode = self.get_value("system_mode")
+        if (mode == "COOL") or (mode == "HEAT"):
+          self.last_mode = mode
+          # print "updated last_mode: ", last_mode
+        self.last_pause_time = sim_time
+        self.pause_time = sim_time + timedelta(seconds=1)
+        if (self.pause_time > self.new_timestep_start):
+          self.pause_time = self.new_timestep_start
+        self.pause_string = util.datetimeTOstring(self.pause_time, self.timezone_short)
+        if (sim_time == self.new_timestep_start): # Simulation has been paused on a timestep transition
+          self.sim_time = sim_time
+          if self.ts_count < 10:
+            print "new timestep! sim time = ", self.sim_time
+            self.ts_count += 1
+          return True
+        else: # resume simulation
+          args_set_pause = ["wget","http://localhost:6267/control/pauseat="+self.pause_string, "-q", "-O", "-"]
+          cmd_set_pause = subprocess.Popen(args_set_pause) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+          cmd_set_pause.communicate()
+          return False
+      elif self.pause_time > self.start_control: # This shouldn't happen
+        print "clock at ", sim_time, "; pause_string = ", self.pause_string
+        self.pause_time = sim_time + timedelta(seconds=10)
+        self.pause_string = util.datetimeTOstring(self.pause_time, self.timezone_short)
+        print "updating pause_time: ", self.pause_string
+        args_set_pause = ["wget","http://localhost:6267/control/pauseat="+self.pause_string, "-O", "-"]
+        cmd_set_pause = subprocess.Popen(args_set_pause, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        cmd_out_pause, cmd_err_pause = cmd_set_pause.communicate()
+        print "cmd_out_pause = ", cmd_out_pause
+        print "cmd_err_pause = ", cmd_err_pause
+    else: # This shouldn't happen
+      print "cmd_out = ", cmd_out
+      print "cmd_err = ", cmd_err
+    return False
+
+  def update_state(self, run_params):
+    if (self.sim_time >= self.end_control):
+      self.sim_complete = True
+      return
+    self.new_timestep_start += timedelta(minutes=run_params.timestep)
     # TODO
     # Will need to check if new month; if so, increment self.current_month_index (among other things)
-    pass
+
+  def set_next_setpoints(self, new_heating_setpoint, new_cooling_setpoint):
+    args_set_pause = ["wget","http://localhost:6267/control/pauseat="+self.pause_string, "-q", "-O", "-"]
+    cmd_set_pause = subprocess.Popen(args_set_pause) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    cmd_set_pause.communicate()
 
   def final_cleanup(self, run_params):
     args_resume = ["wget", "http://localhost:6267/control/resume", "-O", "-"] 
