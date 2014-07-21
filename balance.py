@@ -22,7 +22,7 @@ Info needed from settings input file:
   preferred_high_temp
   min_temp
   max_temp
-  budget
+  budget (comma separated list for each month)
 
 Info needed from sim input file:
   start_year (YYYY)
@@ -36,11 +36,13 @@ Info needed from sim input file:
 '''
 
 import sys
+from datetime import datetime
 from pprint import pprint # for debugging
 
 import params
 import worlds
 import agents
+import util
 
 def main(argv):
   run_params = params.Params(argv[1])
@@ -48,8 +50,12 @@ def main(argv):
   pprint (vars(world))
   agent = run_params.initialize_agent()
 
-  # Run first time step separately (TODO: is it necessary for this to be separate? probably...)
-  world.run_first_time_step(run_params) # TODO
+  # For runtime tracking:
+  starttime = datetime.now()
+  print 'starting world at: ', starttime
+
+  # Bring world to start of control
+  world.launch(run_params)
 
   # LOOP for each time step until end time is reached, if applicable
   while True:
@@ -59,8 +65,13 @@ def main(argv):
 
     break
 
-  world.final_cleanup()
-
+  world.final_cleanup(run_params)
+  # For runtime tracking:
+  endtime = datetime.now()
+  print 'world stopped at ', endtime
+  print 'time to run: ', endtime-starttime
+  
+  util.assess_performance(run_params, world, world.start_control, world.end_control)
 
 if __name__ == '__main__':
   main(sys.argv)

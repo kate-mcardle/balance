@@ -19,7 +19,9 @@ class Params:
       self.preferred_high_temp = int(r.next()[1])
       self.min_temp = int(r.next()[1])
       self.max_temp = int(r.next()[1])
-      self.budget = float(r.next()[1])
+      self.budget_string = r.next()[1]
+    self.budgets = self.budget_string.split(', ')
+    self.budgets = [float(b) for b in self.budgets]
 
   def initialize_world(self):
     return getattr(self, 'initialize_%s' % self.world)()
@@ -31,7 +33,6 @@ class Params:
   def initialize_ecobee(self):
     print "initializing Ecobee"
     return worlds.EcobeeWorld(self)
-
 
 
   def initialize_agent(self):

@@ -13,8 +13,7 @@ import util
 import createGLM
 
 class World:
-  def final_cleanup(self):
-    print "final cleanup"
+  pass
 
 class GldWorld(World):
   def __init__(self, run_params):
@@ -34,10 +33,12 @@ class GldWorld(World):
     # Format times for GLD
     self.timezone_short = self.timezone[:3]
     self.start_control = parser.parse(self.start_year + "-" + self.start_month + "-01 00:00:00" + self.timezone_short)
+    self.start_control_string = util.datetimeTOstring(self.start_control, self.timezone_short)
     self.sim_start = self.start_control - timedelta(days = 2)
     self.sim_start_string = util.datetimeTOstring(self.sim_start, self.timezone_short)
     self.n_days_in_months = [calendar.monthrange(int(self.start_year)+i/12, int(self.start_month)+i)[1] for i in range(self.n_months)]
-    self.end_control = self.start_control + timedelta(days = sum(self.n_days_in_months))
+    self.end_control = self.start_control + timedelta(days = sum(self.n_days_in_months)) + timedelta(seconds = -1)
+    self.end_control_string = util.datetimeTOstring(self.end_control, self.timezone_short)
     self.sim_end = self.end_control + timedelta(hours = 1)
     self.sim_end_string = util.datetimeTOstring(self.sim_end, self.timezone_short)
     self.first_pause_at = util.datetimeTOstring(self.start_control, self.timezone_short)
@@ -63,9 +64,37 @@ class GldWorld(World):
     self.glmfile = run_params.run_name + '/' + run_params.run_name + '_GLM_' + run_params.agent + '.glm'
     createGLM.write_GLM_file(self, run_params, "main")
 
-  def run_first_time_step(self, run_params):
-    # TODO
-    pass
+
+  def launch(self, run_params):
+    # Start GridLAB-D in server mode.
+    # Popen does NOT wait for command to finish.
+    args = ["gridlabd", self.glmfile, "--server", "-q"]
+    cmd = subprocess.Popen(args) # does not wait for subprocess to finish
+
+    # Wait for server to come online
+    while True:
+      args_check_clock = ["wget", "http://localhost:6267/clock", "-q", "-O", "-"]
+      cmd_check_clock = subprocess.Popen(args_check_clock, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      cmd_out, cmd_err = cmd_check_clock.communicate() # waits for cmd_check_clock to finish before returning
+      if cmd_out != "":
+        break
+
+    # Set first simulation pause
+    self.pause_time = self.start_control
+    self.pause_string = util.datetimeTOstring(self.pause_time, self.timezone_short)
+    args_set_pause = ["wget","http://localhost:6267/control/pauseat="+self.pause_string, "-q", "-O", "-"]
+    subprocess.call(args_set_pause) # waits for subprocess to complete
+
+    # Initialize variables
+    self.new_timestep_start = self.start_control
+    self.last_pause_time = self.start_control + timedelta(seconds=-1)
+    self.n_timesteps_in_day = 1440.0 / run_params.timestep
+    self.n_timesteps_passed = -1
+    self.current_month_index = 0
+    self.hvac_load = 0.0
+    self.heating_setpoint = run_params.preferred_low_temp
+    self.cooling_setpoint = run_params.preferred_high_temp
+    self.last_mode = "COOL"
 
   def is_new_timestep(self):
     # TODO
@@ -73,14 +102,22 @@ class GldWorld(World):
 
   def update_state(self):
     # TODO
+    # Will need to check if new month; if so, increment self.current_month_index (among other things)
     pass
+
+  def final_cleanup(self, run_params):
+    args_resume = ["wget", "http://localhost:6267/control/resume", "-O", "-"] 
+    # "-O -" makes system not save output to a file
+    # eventually will also want "-q" to not display output on console (helpful for now for debugging)
+    cmd_resume = subprocess.call(args_resume) # subprocess.call will wait for call to finish before returning
 
 class EcobeeWorld(World):
   def __init__(self, run_params):
     print "ecobee world!"
     # TODO
+    # MUST DEFINE energy_use_file, indoor_temps_file, start_control, AND end_control! For final assessment
 
-  def run_first_time_step(self, run_params):
+  def launch(self, run_params):
     # TODO
     pass
 
@@ -89,5 +126,9 @@ class EcobeeWorld(World):
     pass
 
   def update_state(self):
+    # TODO
+    pass
+
+  def final_cleanup(self, run_params):
     # TODO
     pass
