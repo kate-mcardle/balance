@@ -64,6 +64,7 @@ def assess_budget(world, run_params, results_file, start_assessment, end_assessm
     dollar_deviation = total_cost - run_params.budgets[i]
     percent_deviation = 100 * dollar_deviation / (run_params.budgets[i] + 0.0)
     print "For " + str(start_of_month.month) + "/" + str(start_of_month.year) + "---------"
+    print "energy used = ", energy_used
     print "budget was: ", run_params.budgets[i]
     print "total cost = ", total_cost
     print "deviation, $ = ", dollar_deviation
@@ -71,6 +72,7 @@ def assess_budget(world, run_params, results_file, start_assessment, end_assessm
     with open(results_file, 'a') as f:
       fwriter = csv.writer(f)
       fwriter.writerow([str(start_of_month.month) + "/" + str(start_of_month.year) + ":"])
+      fwriter.writerow(["energy used:", energy_used])
       fwriter.writerow(["budget:", run_params.budgets[i]])
       fwriter.writerow(["actual cost:", total_cost])
       fwriter.writerow(["$ deviation:", dollar_deviation])

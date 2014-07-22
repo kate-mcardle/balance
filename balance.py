@@ -61,7 +61,7 @@ def main(argv):
   while True:
     if world.is_new_timestep():
       world.update_state(run_params)
-      heating_setpoint, cooling_setpoint = agent.get_next_setpoints()
+      heating_setpoint, cooling_setpoint = agent.get_next_setpoints(world)
       world.set_next_setpoints(heating_setpoint, cooling_setpoint)
     if world.sim_complete:
       break
