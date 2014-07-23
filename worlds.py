@@ -38,6 +38,9 @@ class GldWorld_TempMeas(World):
     self.sim_start_string = util.datetimeTOstring(self.sim_start, self.timezone_short)
     self.n_days_in_months = [calendar.monthrange(int(self.start_year)+i/12, int(self.start_month)+i)[1] for i in range(self.n_months)]
     self.end_control = self.start_control + timedelta(days = sum(self.n_days_in_months)) + timedelta(seconds = -1)
+    # debug (comment/uncomment line above):
+    # self.end_control = self.start_control + timedelta(hours=15)
+
     self.end_control_string = util.datetimeTOstring(self.end_control, self.timezone_short)
     self.sim_end = self.end_control + timedelta(hours = 3)
     self.sim_end_string = util.datetimeTOstring(self.sim_end, self.timezone_short)
@@ -91,6 +94,9 @@ class GldWorld(World):
     self.n_days_in_months = [calendar.monthrange(int(self.start_year)+i/12, int(self.start_month)+i)[1] for i in range(self.n_months)]
     self.end_control = self.start_control + timedelta(days = sum(self.n_days_in_months)) + timedelta(seconds = -1)
     self.end_control_string = util.datetimeTOstring(self.end_control, self.timezone_short)
+    # debug (comment/uncomment line above):
+    # self.end_control = self.start_control + timedelta(hours=15)
+
     self.sim_end = self.end_control + timedelta(hours = 3)
     self.sim_end_string = util.datetimeTOstring(self.sim_end, self.timezone_short)
     self.first_pause_at = util.datetimeTOstring(self.start_control, self.timezone_short)
@@ -171,6 +177,9 @@ class GldWorld(World):
     if match: 
       sim_time = parser.parse(match.group()[7:-8])
       if (sim_time >= self.pause_time): # Simulation has been paused
+        # debug
+        # print "paused at ", sim_time
+
         # Need to do housekeeping due to GridLAB-D's syncing
         clock_delta = sim_time - self.last_pause_time
         secs = clock_delta.total_seconds()
@@ -182,14 +191,15 @@ class GldWorld(World):
           # print "updated last_mode: ", last_mode
         self.last_pause_time = sim_time
         self.pause_time = sim_time + timedelta(seconds=1)
-        if (self.pause_time > self.new_timestep_start):
-          self.pause_time = self.new_timestep_start
+        # if (self.pause_time > self.new_timestep_start): # no longer think this makes sense...
+        #   self.pause_time = self.new_timestep_start
         self.pause_string = util.datetimeTOstring(self.pause_time, self.timezone_short)
         if (sim_time >= self.new_timestep_start): # Simulation has been paused on a timestep transition
           self.sim_time = sim_time
-          # if self.ts_count < 10:
-          #   print "new timestep! sim time = ", self.sim_time
-          #   self.ts_count += 1
+          # debug
+          # print "new timestep! ", self.sim_time
+          # print "energy used in last timestep = ", self.last_timestep_energy_used
+          
           return True
         else: # resume simulation
           args_set_pause = ["wget","http://localhost:6267/control/pauseat="+self.pause_string, "-q", "-O", "-"]
@@ -238,6 +248,7 @@ class GldWorld(World):
         fwriter.writerow([util.datetimeTOstring(self.sim_time, self.timezone_short), self.cooling_setpoint])
 
     # This should be the last thing to happen
+    self.last_timestep_energy_used = 0.0
     args_set_pause = ["wget","http://localhost:6267/control/pauseat="+self.pause_string, "-q", "-O", "-"]
     cmd_set_pause = subprocess.Popen(args_set_pause) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     cmd_set_pause.communicate()
