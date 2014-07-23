@@ -16,10 +16,10 @@ class World:
   pass
 
 class GldWorld_TempMeas(World):
-  def __init__(self, run_params):
+  def __init__(self, run_params, agent):
     print "simple gld world!"
     self.house_name = 'house_' + run_params.run_name
-    sim_file = run_params.run_name + '/' + run_params.run_name + '_sim.txt'
+    sim_file = run_params.run_name + '/' + run_params.run_name + '_sim_settings.txt'
     with open(sim_file, 'rb') as f:
       r = csv.reader(f, delimiter=' ')
       self.start_year = r.next()[1]
@@ -40,7 +40,6 @@ class GldWorld_TempMeas(World):
     self.end_control = self.start_control + timedelta(days = sum(self.n_days_in_months)) + timedelta(seconds = -1)
     # debug (comment/uncomment line above):
     # self.end_control = self.start_control + timedelta(hours=15)
-
     self.end_control_string = util.datetimeTOstring(self.end_control, self.timezone_short)
     self.sim_end = self.end_control + timedelta(hours = 3)
     self.sim_end_string = util.datetimeTOstring(self.sim_end, self.timezone_short)
@@ -67,14 +66,14 @@ class GldWorld_TempMeas(World):
 
     # Write GLM file
     self.glmfile = run_params.run_name + '/' + run_params.run_name + '_GLM_second_run_' + run_params.agent + '.glm'
-    createGLM.write_GLM_file(self, run_params, "temps")
+    createGLM.write_GLM_file(self, agent, "temps")
 
 class GldWorld(World):
-  def __init__(self, run_params):
+  def __init__(self, run_params, agent):
     print "gld world!"
     self.ts_count = 0
     self.house_name = 'house_' + run_params.run_name
-    sim_file = run_params.run_name + '/' + run_params.run_name + '_sim.txt'
+    sim_file = run_params.run_name + '/' + run_params.run_name + '_sim_settings.txt'
     with open(sim_file, 'rb') as f:
       r = csv.reader(f, delimiter=' ')
       self.start_year = r.next()[1]
@@ -96,7 +95,6 @@ class GldWorld(World):
     self.end_control_string = util.datetimeTOstring(self.end_control, self.timezone_short)
     # debug (comment/uncomment line above):
     # self.end_control = self.start_control + timedelta(hours=15)
-
     self.sim_end = self.end_control + timedelta(hours = 3)
     self.sim_end_string = util.datetimeTOstring(self.sim_end, self.timezone_short)
     self.first_pause_at = util.datetimeTOstring(self.start_control, self.timezone_short)
@@ -118,14 +116,14 @@ class GldWorld(World):
         timestamp_sec = timestamp + timedelta(seconds = 5)
         timestamp_string = util.datetimeTOstring(timestamp_sec, self.timezone_short)
         fwriter.writerow([timestamp_string, self.house_size])
-        timestamp += timedelta(minutes = run_params.timestep)
+        timestamp += timedelta(minutes = agent.timestep)
 
     # Write GLM file
     self.glmfile = run_params.run_name + '/' + run_params.run_name + '_GLM_' + run_params.agent + '.glm'
-    createGLM.write_GLM_file(self, run_params, "main")
+    createGLM.write_GLM_file(self, agent, "main")
+    
 
-
-  def launch(self, run_params):
+  def launch(self, agent):
     # Start GridLAB-D in server mode.
     # Popen does NOT wait for command to finish.
     args = ["gridlabd", self.glmfile, "--server", "-q"]
@@ -148,13 +146,10 @@ class GldWorld(World):
     # Initialize variables
     self.new_timestep_start = self.start_control
     self.last_pause_time = self.start_control + timedelta(seconds=-1)
-    self.n_timesteps_in_day = 1440.0 / run_params.timestep
-    self.n_timesteps_passed = -1
-    self.current_month_index = 0
     self.last_timestep_energy_used = 0.0
     self.hvac_load = 0.0
-    self.heating_setpoint = run_params.preferred_low_temp
-    self.cooling_setpoint = run_params.preferred_high_temp
+    self.heating_setpoint = agent.preferred_low_temp
+    self.cooling_setpoint = agent.preferred_high_temp
     self.last_mode = "COOL"
 
   def get_value(self, prop):
@@ -179,7 +174,6 @@ class GldWorld(World):
       if (sim_time >= self.pause_time): # Simulation has been paused
         # debug
         # print "paused at ", sim_time
-
         # Need to do housekeeping due to GridLAB-D's syncing
         clock_delta = sim_time - self.last_pause_time
         secs = clock_delta.total_seconds()
@@ -196,10 +190,11 @@ class GldWorld(World):
         self.pause_string = util.datetimeTOstring(self.pause_time, self.timezone_short)
         if (sim_time >= self.new_timestep_start): # Simulation has been paused on a timestep transition
           self.sim_time = sim_time
+          if (sim_time == self.start_control): # Simulation has been paused at the start of control, aka start of first timestep
+            self.last_timestep_energy_used = 0.0
           # debug
           # print "new timestep! ", self.sim_time
           # print "energy used in last timestep = ", self.last_timestep_energy_used
-          
           return True
         else: # resume simulation
           args_set_pause = ["wget","http://localhost:6267/control/pauseat="+self.pause_string, "-q", "-O", "-"]
@@ -221,13 +216,14 @@ class GldWorld(World):
       print "cmd_err = ", cmd_err
     return False
 
-  def update_state(self, run_params):
+  def update(self, agent):
     if (self.sim_time >= self.end_control):
       self.sim_complete = True
       return
-    self.new_timestep_start += timedelta(minutes=run_params.timestep)
-    # TODO
-    # Will need to check if new month; if so, increment self.current_month_index (among other things)
+    self.outdoor_temp = float(self.get_value("outdoor_temperature")[:-5])
+    self.indoor_temp = float(self.get_value("air_temperature")[:-5])    
+    self.current_timestep_start = self.new_timestep_start    
+    self.new_timestep_start += timedelta(minutes=agent.timestep)
 
   def set_next_setpoints(self, new_heating_setpoint, new_cooling_setpoint):
     # debug
@@ -253,14 +249,14 @@ class GldWorld(World):
     cmd_set_pause = subprocess.Popen(args_set_pause) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     cmd_set_pause.communicate()
 
-  def final_cleanup(self, run_params):
+  def final_cleanup(self, run_params, agent):
     args_resume = ["wget", "http://localhost:6267/control/resume", "-O", "-"] 
     # "-O -" makes system not save output to a file
     # eventually will also want "-q" to not display output on console (helpful for now for debugging)
     cmd_resume = subprocess.call(args_resume) # subprocess.call will wait for call to finish before returning
 
     # Re-run, to measure comfort
-    second_world = GldWorld_TempMeas(run_params)
+    second_world = GldWorld_TempMeas(run_params, agent)
     args_meas = ["gridlabd", second_world.glmfile]
     cmd_meas = subprocess.Popen(args_meas, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     cmd_out, cmd_err = cmd_meas.communicate()
@@ -273,15 +269,15 @@ class GldWorld(World):
     results_file = run_params.run_name + "/" + run_params.run_name + "_results_second_run" + run_params.agent + ".csv"
     with open(results_file, 'wb') as f:
       fwriter = csv.writer(f)
-    util.assess_budget(second_world, run_params, results_file, self.start_control, self.end_control)
+    util.assess_budget(second_world, agent, results_file, self.start_control, self.end_control)
 
 class EcobeeWorld(World):
-  def __init__(self, run_params):
+  def __init__(self, run_params, agent):
     print "ecobee world!"
     # TODO
     # MUST DEFINE energy_use_file, indoor_temps_file, start_control, AND end_control! For final assessment
 
-  def launch(self, run_params):
+  def launch(self, agent):
     # TODO
     pass
 
@@ -289,10 +285,10 @@ class EcobeeWorld(World):
     # TODO
     pass
 
-  def update_state(self):
+  def update(self):
     # TODO
     pass
 
-  def final_cleanup(self, run_params):
+  def final_cleanup(self, run_params, agent):
     # TODO
     pass

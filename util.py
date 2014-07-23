@@ -51,7 +51,7 @@ def get_energy_used(use_file, start_calc, end_calc, timestamp_col = 0, hvac_load
       row1 = row2
   return kWh
 
-def assess_budget(world, run_params, results_file, start_assessment, end_assessment):
+def assess_budget(world, agent, results_file, start_assessment, end_assessment):
   n_months_elapsed = (end_assessment.year - start_assessment.year)*12 + end_assessment.month - start_assessment.month + 1
   start_of_month = start_assessment
   end_of_month = get_last_second_of_month(start_of_month, world.timezone_short)
@@ -60,12 +60,12 @@ def assess_budget(world, run_params, results_file, start_assessment, end_assessm
     fwriter.writerow(["BUDGET RESULTS"])
   for i in range(n_months_elapsed):
     energy_used = get_energy_used(world.energy_use_file, start_of_month, end_of_month)
-    total_cost = energy_used*run_params.elec_price
-    dollar_deviation = total_cost - run_params.budgets[i]
-    percent_deviation = 100 * dollar_deviation / (run_params.budgets[i] + 0.0)
+    total_cost = energy_used*agent.elec_price
+    dollar_deviation = total_cost - agent.budgets[i]
+    percent_deviation = 100 * dollar_deviation / (agent.budgets[i] + 0.0)
     print "For " + str(start_of_month.month) + "/" + str(start_of_month.year) + "---------"
     print "energy used = ", energy_used
-    print "budget was: ", run_params.budgets[i]
+    print "budget was: ", agent.budgets[i]
     print "total cost = ", total_cost
     print "deviation, $ = ", dollar_deviation
     print "deviation, % = ", percent_deviation
@@ -73,14 +73,14 @@ def assess_budget(world, run_params, results_file, start_assessment, end_assessm
       fwriter = csv.writer(f)
       fwriter.writerow([str(start_of_month.month) + "/" + str(start_of_month.year) + ":"])
       fwriter.writerow(["energy used:", energy_used])
-      fwriter.writerow(["budget:", run_params.budgets[i]])
+      fwriter.writerow(["budget:", agent.budgets[i]])
       fwriter.writerow(["actual cost:", total_cost])
       fwriter.writerow(["$ deviation:", dollar_deviation])
       fwriter.writerow(["% deviation:", percent_deviation])
     start_of_month = end_of_month + timedelta(seconds = 1)
     end_of_month = get_last_second_of_month(start_of_month, world.timezone_short)
 
-def assess_comfort(world, run_params, results_file, start_assessment, end_assessment, timestamp_col = 0, temp_col = 1):
+def assess_comfort(world, agent, results_file, start_assessment, end_assessment, timestamp_col = 0, temp_col = 1):
   n_months_elapsed = (end_assessment.year - start_assessment.year)*12 + end_assessment.month - start_assessment.month + 1
   start_of_month = start_assessment
   end_of_month = get_last_second_of_month(start_of_month, world.timezone_short)
@@ -106,12 +106,12 @@ def assess_comfort(world, run_params, results_file, start_assessment, end_assess
       for row2 in r:
         if (parser.parse(row2[timestamp_col]) > end_of_month):
           break
-        if (float(row2[temp_col]) > (run_params.preferred_high_temp + 1)):
+        if (float(row2[temp_col]) > (agent.preferred_high_temp + 1)):
           mins += 1
-          degree_mins += float(row2[temp_col]) - run_params.preferred_high_temp + 1
-        elif (float(row2[temp_col]) < (run_params.preferred_low_temp - 1)):
+          degree_mins += float(row2[temp_col]) - agent.preferred_high_temp + 1
+        elif (float(row2[temp_col]) < (agent.preferred_low_temp - 1)):
           mins += 1
-          degree_mins += run_params.preferred_low_temp - 1 - float(row2[temp_col])
+          degree_mins += agent.preferred_low_temp - 1 - float(row2[temp_col])
     print "For " + str(start_of_month.month) + "/" + str(start_of_month.year) + "---------"
     print "minutes outside preferred range = ", mins
     n_days_in_month = end_of_month.day
@@ -127,9 +127,9 @@ def assess_comfort(world, run_params, results_file, start_assessment, end_assess
     start_of_month = end_of_month + timedelta(seconds = 1)
     end_of_month = get_last_second_of_month(start_of_month, world.timezone_short)
 
-def assess_performance(run_params, world, start_assessment, end_assessment):
+def assess_performance(run_params, world, agent, start_assessment, end_assessment):
   results_file = run_params.run_name + "/" + run_params.run_name + "_results_" + run_params.agent + ".csv"
   with open(results_file, 'wb') as f:
     fwriter = csv.writer(f)
-  assess_budget(world, run_params, results_file, start_assessment, end_assessment)
-  assess_comfort(world, run_params, results_file, start_assessment, end_assessment)
+  assess_budget(world, agent, results_file, start_assessment, end_assessment)
+  assess_comfort(world, agent, results_file, start_assessment, end_assessment)

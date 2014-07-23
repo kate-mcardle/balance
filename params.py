@@ -13,27 +13,6 @@ class Params:
       r = csv.reader(f, delimiter=' ')
       self.world = r.next()[1]
       self.agent = r.next()[1]
-      self.elec_price = float(r.next()[1])
-      self.timestep = int(r.next()[1])
-      self.preferred_low_temp = int(r.next()[1])
-      self.preferred_high_temp = int(r.next()[1])
-      self.min_temp = int(r.next()[1])
-      self.max_temp = int(r.next()[1])
-      self.budget_string = r.next()[1]
-    self.budgets = self.budget_string.split(', ')
-    self.budgets = [float(b) for b in self.budgets]
-
-  def initialize_world(self):
-    return getattr(self, 'initialize_%s' % self.world)()
-
-  def initialize_gld(self):
-    print "initializing GridLAB-D"
-    return worlds.GldWorld(self)
-
-  def initialize_ecobee(self):
-    print "initializing Ecobee"
-    return worlds.EcobeeWorld(self)
-
 
   def initialize_agent(self):
     return getattr(self, 'initialize_%s_agent' % self.agent)()
@@ -45,3 +24,15 @@ class Params:
   def initialize_qlearn_agent(self):
     print "initializing qlearning agent"
     return agents.QLearnAgent(self)
+
+
+  def initialize_world(self, agent):
+    return getattr(self, 'initialize_%s' % self.world)(agent)
+
+  def initialize_gld(self, agent):
+    print "initializing GridLAB-D"
+    return worlds.GldWorld(self, agent)
+
+  def initialize_ecobee(self, agent):
+    print "initializing Ecobee"
+    return worlds.EcobeeWorld(self, agent)

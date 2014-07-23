@@ -1,6 +1,6 @@
 import sys
 
-def write_GLM_file(world, run_params, simType):
+def write_GLM_file(world, agent, simType):
   with open(world.glmfile, 'wb') as glmfile:
     if simType == 'main':
       glmfile.write('#set pauseat=\'' + world.first_pause_at + '\'\n')
@@ -25,8 +25,8 @@ def write_GLM_file(world, run_params, simType):
     glmfile.write('\n\theating_system_type ' + world.heater_type + ';')
 
     if simType == "main":
-      glmfile.write('\n\tcooling_setpoint ' + str(run_params.preferred_high_temp) + ';')
-      glmfile.write('\n\theating_setpoint ' + str(run_params.preferred_low_temp) + ';')
+      glmfile.write('\n\tcooling_setpoint ' + str(agent.preferred_high_temp) + ';')
+      glmfile.write('\n\theating_setpoint ' + str(agent.preferred_low_temp) + ';')
       glmfile.write('\n\tobject player: {')
       glmfile.write('\n\t\tproperty floor_area;')
       glmfile.write('\n\t\tfile ' + world.floor_player_file + ';')
@@ -46,8 +46,8 @@ def write_GLM_file(world, run_params, simType):
       # glmfile.write('\n\t\tinterval 60;')
       # glmfile.write('\n\t};')
     elif simType == "temps":
-      glmfile.write('\n\tcooling_setpoint ' + str(run_params.preferred_high_temp) + ';')
-      glmfile.write('\n\theating_setpoint ' + str(run_params.preferred_low_temp) + ';')
+      glmfile.write('\n\tcooling_setpoint ' + str(agent.preferred_high_temp) + ';')
+      glmfile.write('\n\theating_setpoint ' + str(agent.preferred_low_temp) + ';')
       glmfile.write('\n\tobject player: {')
       glmfile.write('\n\t\tproperty floor_area;')
       glmfile.write('\n\t\tfile ' + world.floor_player_file + ';')
