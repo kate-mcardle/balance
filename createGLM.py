@@ -40,11 +40,6 @@ def write_GLM_file(world, agent, simType):
       glmfile.write('\n\t\tproperty hvac_load, air_temperature, cooling_setpoint, heating_setpoint, outdoor_temperature, system_mode;')
       glmfile.write('\n\t\tfile ' + world.energy_use_file + ';')
       glmfile.write('\n\t};')
-      # glmfile.write('\n\tobject recorder: {')
-      # glmfile.write('\n\t\tproperty air_temperature;')
-      # glmfile.write('\n\t\tfile ' + world.indoor_temps_file + ';')
-      # glmfile.write('\n\t\tinterval 60;')
-      # glmfile.write('\n\t};')
     elif simType == "temps":
       glmfile.write('\n\tcooling_setpoint ' + str(agent.preferred_high_temp) + ';')
       glmfile.write('\n\theating_setpoint ' + str(agent.preferred_low_temp) + ';')
@@ -74,15 +69,15 @@ def write_GLM_file(world, agent, simType):
       glmfile.write('\n\t\tfile ' + world.indoor_temps_file + ';')
       glmfile.write('\n\t\tinterval 60;')
       glmfile.write('\n\t};')
+    elif simType == "pred":
+      glmfile.write('\n\tcooling_setpoint ' + str(world.cooling_setpoint) + ';')
+      glmfile.write('\n\theating_setpoint ' + str(world.heating_setpoint) + ';')
+      glmfile.write('\n\tair_temperature ' + str(world.indoor_temp) + ';')
+      glmfile.write('\n\tobject recorder: {')
+      glmfile.write('\n\t\tproperty hvac_load;')
+      glmfile.write('\n\t\tfile ' + world.energy_use_file + ';')
+      glmfile.write('\n\t};')
     # TODO
-    # elif simType == "pred":
-    #   glmfile.write('\n\tcooling_setpoint ' + str(runParams.pred_cooling_setpoint) + ';')
-    #   glmfile.write('\n\theating_setpoint ' + str(runParams.pred_heating_setpoint) + ';')
-    #   glmfile.write('\n\tair_temperature ' + str(runParams.pred_indoor_temp) + ';')
-    #   glmfile.write('\n\tobject recorder: {')
-    #   glmfile.write('\n\t\tproperty hvac_load;')
-    #   glmfile.write('\n\t\tfile ' + runParams.pred_file + ';')
-    #   glmfile.write('\n\t};')
     # elif simType == "min_cost":
     #   glmfile.write('\n\tcooling_setpoint ' + str(runParams.max_temp) + ';')
     #   glmfile.write('\n\theating_setpoint ' + str(runParams.min_temp) + ';')

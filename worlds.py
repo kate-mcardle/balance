@@ -68,6 +68,24 @@ class GldWorld_TempMeas(World):
     self.glmfile = run_params.run_name + '/' + run_params.run_name + '_GLM_second_run_' + run_params.agent + '.glm'
     createGLM.write_GLM_file(self, agent, "temps")
 
+class GldWorld_Predictive(World):
+  # Used only by the LookupAgent, for predictive runs
+  def __init__(self, orig_world, timestep):
+    self.run_name = orig_world.energy_use_file.split("/")[0]
+    self.house_name = 'house_predictive_runs'
+    self.timezone = orig_world.timezone
+    self.tmyfile = orig_world.tmyfile
+    self.house_size = orig_world.house_size
+    self.heater_type = orig_world.heater_type
+    self.sim_start_time = orig_world.sim_time
+    self.sim_start_string = util.datetimeTOstring(self.sim_start_time, orig_world.timezone_short)
+    self.sim_end_time = self.sim_start_time + timedelta(minutes = timestep)
+    self.sim_end_string = util.datetimeTOstring(self.sim_end_time, orig_world.timezone_short)
+    self.glmfile = self.run_name + "/predictive_runs_lookup.glm"
+    self.energy_use_file = self.run_name + "/energy_use_for_predictions.csv"
+    self.indoor_temp = orig_world.indoor_temp
+    self.outdoor_temp = orig_world.outdoor_temp
+
 class GldWorld(World):
   def __init__(self, run_params, agent):
     print "gld world!"
@@ -226,18 +244,18 @@ class GldWorld(World):
     self.new_timestep_start += timedelta(minutes=agent.timestep)
 
   def set_next_setpoints(self, new_heating_setpoint, new_cooling_setpoint):
-    # debug
-    if (new_heating_setpoint != None and new_cooling_setpoint != None):
+    if new_heating_setpoint != self.heating_setpoint:
       self.heating_setpoint = new_heating_setpoint
-      self.cooling_setpoint = new_cooling_setpoint
       args_set_heat = ["wget", "http://localhost:6267/"+self.house_name+"/heating_setpoint="+str(self.heating_setpoint), "-q", "-O", "-"]
-      cmd_set_heat = subprocess.Popen(args_set_heat) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+      cmd_set_heat = subprocess.Popen(args_set_heat, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       cmd_set_heat.communicate()
       with open(self.heating_temps_file,'a') as f:
         fwriter = csv.writer(f)
         fwriter.writerow([util.datetimeTOstring(self.sim_time, self.timezone_short), self.heating_setpoint])
+    if new_cooling_setpoint != self.cooling_setpoint:
+      self.cooling_setpoint = new_cooling_setpoint
       args_set_cool = ["wget", "http://localhost:6267/"+self.house_name+"/cooling_setpoint="+str(self.cooling_setpoint), "-q", "-O", "-"]
-      cmd_set_cool = subprocess.Popen(args_set_cool) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+      cmd_set_cool = subprocess.Popen(args_set_cool, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       cmd_set_cool.communicate()
       with open(self.cooling_temps_file,'a') as f:
         fwriter = csv.writer(f)
@@ -246,7 +264,7 @@ class GldWorld(World):
     # This should be the last thing to happen
     self.last_timestep_energy_used = 0.0
     args_set_pause = ["wget","http://localhost:6267/control/pauseat="+self.pause_string, "-q", "-O", "-"]
-    cmd_set_pause = subprocess.Popen(args_set_pause) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    cmd_set_pause = subprocess.Popen(args_set_pause, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     cmd_set_pause.communicate()
 
   def final_cleanup(self, run_params, agent):
@@ -257,13 +275,7 @@ class GldWorld(World):
 
     # Re-run, to measure comfort
     second_world = GldWorld_TempMeas(run_params, agent)
-    args_meas = ["gridlabd", second_world.glmfile]
-    cmd_meas = subprocess.Popen(args_meas, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    cmd_out, cmd_err = cmd_meas.communicate()
-    if ("ERROR" in cmd_err) or ("FATAL" in cmd_err):
-      print "GridLAB-D error in prediction simulation!"
-      print cmd_err
-      exit()
+    util.run_gld_reg(second_world.glmfile)
 
     # Test
     results_file = run_params.run_name + "/" + run_params.run_name + "_results_second_run" + run_params.agent + ".csv"

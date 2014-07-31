@@ -8,6 +8,11 @@ from dateutil import parser
 import calendar
 import subprocess
 import time
+from random import randint
+
+import worlds
+import createGLM
+import util
 
 class Agent:
   def read_settings(self, run_name):
@@ -20,8 +25,7 @@ class Agent:
       self.preferred_high_temp = int(r.next()[1])
       self.min_temp = int(r.next()[1])
       self.max_temp = int(r.next()[1])
-      self.budget_string = r.next()[1]
-    self.budgets = self.budget_string.split(', ')
+      self.budgets = r.next()[1:]
     self.budgets = [float(b) for b in self.budgets]
     
     self.n_timesteps_in_day = 1440.0 / self.timestep # assumes a fixed timestep
@@ -65,14 +69,47 @@ class LookupAgent(Agent):
     self.last_outdoor_temp = world.outdoor_temp
     self.last_indoor_temp = world.indoor_temp
 
+  def get_energy_estimate(self, world):
+    createGLM.write_GLM_file(world, self, "pred")
+    util.run_gld_reg(world.glmfile)
+    energy_used = util.get_energy_used(world.energy_use_file, world.sim_start_time, world.sim_end_time)
+    if (round(world.outdoor_temp, 0), round(world.indoor_temp, 0), round(energy_used, 2)) not in self.energy_estimate.keys():
+      self.energy_estimate[(round(world.outdoor_temp, 0), round(world.indoor_temp, 0), round(energy_used, 2))] = (world.heating_setpoint, world.cooling_setpoint)
+    return energy_used
 
   def get_next_setpoints(self, world):
     # debug
-    times = [parser.parse("2013-04-01 02:00:00 CST"), parser.parse("2013-04-01 05:00:00 CST"), parser.parse("2013-04-03 09:00:00 CST"), parser.parse("2013-04-01 10:31:00 CST")]
-    if (world.sim_time in times):
-      return (world.heating_setpoint+1, world.cooling_setpoint+1)
-    # TODO
-    return None, None
+    # times = [parser.parse("2013-04-01 02:00:00 CST"), parser.parse("2013-04-01 05:00:00 CST"), parser.parse("2013-04-03 09:00:00 CST"), parser.parse("2013-05-01 08:00:00 CST"), parser.parse("2013-05-05 13:00:00 CST"), parser.parse("2013-06-03 11:00:00 CST"), parser.parse("2013-06-13 23:00:00 CST")]
+    # if (world.sim_time in times):
+    #   n = randint(0,1)*2-1
+    #   return (world.heating_setpoint+n, world.cooling_setpoint+n)
+    
+    energy_budget = self.budget_timestep / (self.elec_price + 0.0)
+    if energy_budget <= 0.0:
+      heating_setpoint = self.min_temp
+      cooling_setpoint = self.max_temp
+    elif (round(world.outdoor_temp, 0), round(world.indoor_temp, 0), round(energy_budget, 2)) in self.energy_estimate.keys():
+      print "table lookup successful"
+      heating_setpoint, cooling_setpoint = self.energy_estimate[(round(world.outdoor_temp, 0), round(world.indoor_temp, 0), round(energy_budget, 2))]
+    else:
+      pred_world = worlds.GldWorld_Predictive(world, self.timestep)
+      pred_world.heating_setpoint = self.preferred_low_temp
+      pred_world.cooling_setpoint = self.preferred_high_temp
+      if world.last_mode == "COOL": # need to cool
+        for i in range(self.max_temp - self.preferred_high_temp):
+          energy_used = self.get_energy_estimate(pred_world)
+          if energy_used <= energy_budget:
+            break
+          pred_world.cooling_setpoint += 1
+      else: # need to heat
+        for i in range(self.preferred_low_temp - self.min_temp):
+          energy_used = self.get_energy_estimate(pred_world)
+          if energy_used <= energy_budget:
+            break
+          pred_world.heating_setpoint -= 1
+      cooling_setpoint = pred_world.cooling_setpoint
+      heating_setpoint = pred_world.heating_setpoint
+    return (heating_setpoint, cooling_setpoint)
 
 class QLearnAgent(Agent):
   def __init__(self, run_params):

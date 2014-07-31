@@ -25,7 +25,7 @@ Info needed from agent settings input file:
   preferred_high_temp
   min_temp
   max_temp
-  budget (comma separated list for each month)
+  budget (space-separated list for each month)
 
 Info needed from sim input file:
   start_year (YYYY)

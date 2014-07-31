@@ -133,3 +133,12 @@ def assess_performance(run_params, world, agent, start_assessment, end_assessmen
     fwriter = csv.writer(f)
   assess_budget(world, agent, results_file, start_assessment, end_assessment)
   assess_comfort(world, agent, results_file, start_assessment, end_assessment)
+
+def run_gld_reg(glmfile):
+  args_reg = ["gridlabd", glmfile]
+  cmd_reg = subprocess.Popen(args_reg, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  cmd_out, cmd_err = cmd_reg.communicate()
+  if ("ERROR" in cmd_err) or ("FATAL" in cmd_err):
+    print "GridLAB-D error in regular (non-server) simulation!"
+    print cmd_err
+    exit()
