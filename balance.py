@@ -19,7 +19,7 @@ Info needed from settings input file:
   agent (lowest_cost, highest_comfort, lookup, or qlearn)
 
 Info needed from agent settings input file:
-  electricity_price ($ per kWh)
+  electricity_prices ($ per kWh; space-separated list for each month from Jan to Dec)
   timestep (minutes; must be a factor of 1440, number of minutes in a day)
   preferred_low_temp
   preferred_high_temp
@@ -51,7 +51,7 @@ def main(argv):
   run_params = params.Params(argv[1])
   agent = run_params.initialize_agent()
   world = run_params.initialize_world(agent)
-  # pprint (vars(world))
+  pprint (vars(world))
 
   # For runtime tracking:
   starttime = datetime.now()

@@ -48,13 +48,14 @@ class Agent:
     settings_file = run_name + '/' + run_name + '_agent_settings.txt'
     with open(settings_file, 'rb') as f:
       r = csv.reader(f, delimiter=' ')
-      self.elec_price = float(r.next()[1])
+      self.elec_prices = r.next()[1:]
       self.timestep = int(r.next()[1])
       self.preferred_low_temp = int(r.next()[1])
       self.preferred_high_temp = int(r.next()[1])
       self.min_temp = int(r.next()[1])
       self.max_temp = int(r.next()[1])
       self.budgets = r.next()[1:]
+    self.elec_prices = [float(p) for p in self.elec_prices]
     self.budgets = [float(b) for b in self.budgets]
     
     self.n_timesteps_in_day = 1440.0 / self.timestep # assumes a fixed timestep
@@ -102,7 +103,7 @@ class LookupAgent(Agent):
         self.budget_month_used = 0.0
         self.current_month_index += 1
       else:
-        self.budget_month_used += world.last_timestep_energy_used * self.elec_price
+        self.budget_month_used += world.last_timestep_energy_used * self.elec_prices[self.current_month_index-1]
       # Reset the day's used budget to 0 and recalculate the coming day's budget
       print "new day ", world.sim_time
       self.budget_day_used = 0.0
@@ -110,8 +111,8 @@ class LookupAgent(Agent):
       self.n_timesteps_passed = 0
     # If not the start of a new day, update the used portions of the budgets
     else:
-      self.budget_month_used += world.last_timestep_energy_used * self.elec_price
-      self.budget_day_used += world.last_timestep_energy_used * self.elec_price
+      self.budget_month_used += world.last_timestep_energy_used * self.elec_prices[self.current_month_index-1]
+      self.budget_day_used += world.last_timestep_energy_used * self.elec_prices[self.current_month_index-1]
     
     # Whether it's the start of a new day or not...
     if hasattr(self, "last_outdoor_temp"): # as long as it's not the very first timestep, add the last timestep to the energy estimate lookup table
@@ -140,7 +141,7 @@ class LookupAgent(Agent):
     #   n = randint(0,1)*2-1
     #   return (world.heating_setpoint+n, world.cooling_setpoint+n)
     
-    energy_budget = self.budget_timestep / (self.elec_price + 0.0)
+    energy_budget = self.budget_timestep / (self.elec_prices[self.current_month_index-1] + 0.0)
     if energy_budget <= 0.0:
       heating_setpoint = self.min_temp
       cooling_setpoint = self.max_temp

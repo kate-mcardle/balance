@@ -82,7 +82,7 @@ def assess_budget(world, agent, results_file, start_assessment, end_assessment):
     fwriter.writerow(["BUDGET RESULTS"])
   for i in range(n_months_elapsed):
     energy_used = get_energy_used(world.energy_use_file, start_of_month, end_of_month)
-    total_cost = energy_used*agent.elec_price
+    total_cost = energy_used*agent.elec_prices[start_of_month.month-1]
     dollar_deviation = total_cost - agent.budgets[i]
     percent_deviation = 100 * dollar_deviation / (agent.budgets[i] + 0.0)
     print "For " + str(start_of_month.month) + "/" + str(start_of_month.year) + "---------"
