@@ -1,3 +1,8 @@
+'''
+This file contains a function, write_GLM_file, to create a .glm file for GridLAB-D, based on 
+the world's and agent's specifications, as well as the type (purpose) of simulation.
+'''
+
 import sys
 
 def write_GLM_file(world, agent, simType):

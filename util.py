@@ -1,3 +1,7 @@
+'''
+This file contains several helper methods.
+'''
+
 import sys
 import csv
 import re
@@ -10,6 +14,9 @@ import subprocess
 import time
 
 def datetimeTOstring(dt, tz): # TODO This function only works for the year 2013...how to make it general?
+  '''
+  Converts a python datetime object and timezone to a string that can be used by GridLAB-D.
+  '''
   dtstring = str(dt)[:19] + ' ' + tz
   # Daylight Savings Time (need to use CDT): 3/10/13 - 11/3/13
   cdt_start = parser.parse("2013-03-10 02:00:00 CST")
@@ -19,12 +26,21 @@ def datetimeTOstring(dt, tz): # TODO This function only works for the year 2013.
   return dtstring
 
 def get_last_second_of_month(dt, tz):
+  '''
+  Returns a datetime object corresponding to the last second in the month of the datetime object 
+  provided, in the timezone given.
+  '''
   year = dt.year
   month = dt.month
   dt_string = str(year) + "-" + str(month) + "-" + str(calendar.monthrange(year, month)[1]) + " 23:59:59 " + tz
   return parser.parse(dt_string)
 
-def get_energy_used(use_file, start_calc, end_calc, timestamp_col = 0, hvac_load_col = 1):  
+def get_energy_used(use_file, start_calc, end_calc, timestamp_col = 0, hvac_load_col = 1):
+  '''
+  Returns the energy, in kWh, used from one datetime (start_calc) to a later datetime (end_calc), as 
+  recorded in the csv file use_file. The two datetimes must be contained within the timespan of
+  the use_file.
+  '''
   kWh = 0
   with open(use_file) as f:
     r = csv.reader(f)
@@ -52,6 +68,12 @@ def get_energy_used(use_file, start_calc, end_calc, timestamp_col = 0, hvac_load
   return kWh
 
 def assess_budget(world, agent, results_file, start_assessment, end_assessment):
+  '''
+  Compares the cost of the energy used (as recorded in the world's energy_use_file) to 
+  the user's desired budget, from the datetime start_assessment to datetime end_assessment. 
+  Records the results to a csv file results_file. The two datetimes must be contained within 
+  the timespan of the world's energy use file.
+  '''
   n_months_elapsed = (end_assessment.year - start_assessment.year)*12 + end_assessment.month - start_assessment.month + 1
   start_of_month = start_assessment
   end_of_month = get_last_second_of_month(start_of_month, world.timezone_short)
@@ -81,6 +103,12 @@ def assess_budget(world, agent, results_file, start_assessment, end_assessment):
     end_of_month = get_last_second_of_month(start_of_month, world.timezone_short)
 
 def assess_comfort(world, agent, results_file, start_assessment, end_assessment, timestamp_col = 0, temp_col = 1):
+  '''
+  Compares the indoor temperatures (as recorded in the world's indoor_temps_file to the user's 
+  preferred temperatures, from the datetime start_assessment to datetime end_assessment. 
+  Records the results to a csv file results_file. The two datetimes must be contained within 
+  the timespan of the world's energy use file.
+  '''
   n_months_elapsed = (end_assessment.year - start_assessment.year)*12 + end_assessment.month - start_assessment.month + 1
   start_of_month = start_assessment
   end_of_month = get_last_second_of_month(start_of_month, world.timezone_short)
@@ -135,6 +163,9 @@ def assess_performance(run_params, world, agent, start_assessment, end_assessmen
   assess_comfort(world, agent, results_file, start_assessment, end_assessment)
 
 def run_gld_reg(glmfile):
+  '''
+  Runs a GridLAB-D simulation (not in server mode) using the provided .glm file.
+  '''
   args_reg = ["gridlabd", glmfile]
   cmd_reg = subprocess.Popen(args_reg, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   cmd_out, cmd_err = cmd_reg.communicate()

@@ -1,3 +1,9 @@
+'''
+A simple class to read in the run settings and dynamically create the 
+appropriate world (GridLAB-D simulation or Ecobee) and agent, based
+on the run settings.
+'''
+
 import sys
 import csv
 import re

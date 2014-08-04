@@ -1,3 +1,9 @@
+'''
+agents.py contains the various agents we have developed for balance. The Agent class is a base 
+class with only one function inherited by its derived classes. Derived classes must implement
+a constructor and update_state and get_next_setpoints methods.
+'''
+
 import sys
 import csv
 import re
@@ -15,7 +21,30 @@ import createGLM
 import util
 
 class Agent:
+  def __init__(self, run_params):
+    '''
+    Class constructor for the agent. Takes care of any setup for the specifications of the run.
+    '''
+    print "Didn't define --constructor-- for this derived class!"
+
+  def update_state(self, world):
+    '''
+    Update's the agent's knowledge of the world state, based on the current world parameters, and 
+    its own tracking such as the budget used.
+    '''
+    print "Didn't define --update_state-- for this derived class!"
+
+  def get_next_setpoints(self, world):
+    '''
+    Determines and returns the next heating and cooling setpoints the agent should use 
+    for the thermostat.
+    '''
+    print "Didn't define --get_next_setpoints-- for this derived class!"
+
   def read_settings(self, run_name):
+    '''
+    Reads and stores the specifications related to this agent for this run.
+    '''
     settings_file = run_name + '/' + run_name + '_agent_settings.txt'
     with open(settings_file, 'rb') as f:
       r = csv.reader(f, delimiter=' ')
@@ -70,6 +99,11 @@ class LookupAgent(Agent):
     self.last_indoor_temp = world.indoor_temp
 
   def get_energy_estimate(self, world):
+    '''
+    Estimates how much energy will be used in the next timestep, given the current world state, by 
+    running a GridLAB-D simulation for the timestep. The world's .glm file includes the thermostat 
+    heating and cooling setpoint, which remain constant over the course of the simulated timestep.
+    '''
     createGLM.write_GLM_file(world, self, "pred")
     util.run_gld_reg(world.glmfile)
     energy_used = util.get_energy_used(world.energy_use_file, world.sim_start_time, world.sim_end_time)

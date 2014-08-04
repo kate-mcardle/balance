@@ -1,3 +1,14 @@
+'''
+worlds.py manages the passage of time in the agent's lifespan. The World class is a 
+(virtual) base class; the derived classes that are used in balance.py are GldWorld and 
+EcobeeWorld. These classes interact with the simulator or Ecobee to get the most recent
+temperature and energy use values and set new thermostat setpoints.
+
+Additionally, the derived class GldWorld_TempMeas is provided to re-run the simulation 
+in order to record temperatures every minute, and the derived class GldWorld_Predictive
+is provided solely for the LookupAgent to use in its predictions.
+'''
+
 import sys
 import csv
 import re
@@ -13,78 +24,46 @@ import util
 import createGLM
 
 class World:
-  pass
-
-class GldWorld_TempMeas(World):
   def __init__(self, run_params, agent):
-    print "simple gld world!"
-    self.house_name = 'house_' + run_params.run_name
-    sim_file = run_params.run_name + '/' + run_params.run_name + '_sim_settings.txt'
-    with open(sim_file, 'rb') as f:
-      r = csv.reader(f, delimiter=' ')
-      self.start_year = r.next()[1]
-      self.start_month = r.next()[1]
-      self.n_months = int(r.next()[1])
-      self.timezone = r.next()[1]
-      self.tmyfile = r.next()[1]
-      self.house_size = r.next()[1]
-      self.heater_type = r.next()[1]
+    '''
+    Class constructor for the world. Takes care of any setup but does not initiate the
+    "start" of the world.
+    '''
+    print "Didn't define --constructor-- for this derived class!"
 
-    # Format times for GLD
-    self.timezone_short = self.timezone[:3]
-    self.start_control = parser.parse(self.start_year + "-" + self.start_month + "-01 00:00:00" + self.timezone_short)
-    self.start_control_string = util.datetimeTOstring(self.start_control, self.timezone_short)
-    self.sim_start = self.start_control - timedelta(days = 2)
-    self.sim_start_string = util.datetimeTOstring(self.sim_start, self.timezone_short)
-    self.n_days_in_months = [calendar.monthrange(int(self.start_year)+i/12, int(self.start_month)+i)[1] for i in range(self.n_months)]
-    self.end_control = self.start_control + timedelta(days = sum(self.n_days_in_months)) + timedelta(seconds = -1)
-    # debug (comment/uncomment line above):
-    # self.end_control = self.start_control + timedelta(hours=15)
-    self.end_control_string = util.datetimeTOstring(self.end_control, self.timezone_short)
-    self.sim_end = self.end_control + timedelta(hours = 3)
-    self.sim_end_string = util.datetimeTOstring(self.sim_end, self.timezone_short)
-    self.first_pause_at = util.datetimeTOstring(self.start_control, self.timezone_short)
-    self.sim_complete = False
-    self.sim_time = ""
+  def launch(self, agent):
+    '''
+    Starts communication between the world and balance, bringing them 
+    to the same point in time.
+    '''
+    print "Didn't define --launch-- method for this derived class!"
 
-    # Format files needed
-    for file_description in ['cooling_temps_file', 'heating_temps_file', 'indoor_temps_file', 'energy_use_file']:
-      file_name = run_params.run_name + '/' + run_params.run_name + '_' + file_description[:-5] + '_' + run_params.agent + '.csv'
-      setattr(self, file_description, file_name)
-    self.floor_player_file = run_params.run_name + '/' + run_params.run_name + '_floor_player_second_run_' + run_params.agent + '.csv'
-    with open(self.energy_use_file, 'rb') as f:
-      r = csv.reader(f)
-      for row_header in r:
-        match = re.search(r'\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d', row_header[0])
-        if match:
-          break
-      with open(self.floor_player_file, 'wb') as f2:
-        fwriter = csv.writer(f2)
-        for row in r:
-          fwriter.writerow([row[0], self.house_size])
-    self.energy_use_file = run_params.run_name + '/' + run_params.run_name + '_energy_use_second_run_' + run_params.agent + '.csv'
+  def is_new_timestep(self):
+    '''
+    Controls balance's main control flow, to check if the current time 
+    corresponds with a "balance" timestep. Also does housekeeping as needed, to track any 
+    changes to the world that must be tracked as often as possible (eg HVAC usage).
+    '''
+    print "Didn't define --is_new_timestep-- method for this derived class!"
 
-    # Write GLM file
-    self.glmfile = run_params.run_name + '/' + run_params.run_name + '_GLM_second_run_' + run_params.agent + '.glm'
-    createGLM.write_GLM_file(self, agent, "temps")
+  def update(self, agent):
+    '''
+    Updates the values for the features of the world that may have changed since the
+    last timestep, such as indoor and outdoor temperature.
+    '''
+    print "Didn't define --update-- method for this derived class!"
 
-class GldWorld_Predictive(World):
-  # Used only by the LookupAgent, for predictive runs
-  def __init__(self, orig_world, timestep):
-    self.run_name = orig_world.energy_use_file.split("/")[0]
-    self.house_name = 'house_predictive_runs'
-    self.timezone = orig_world.timezone
-    self.tmyfile = orig_world.tmyfile
-    self.house_size = orig_world.house_size
-    self.heater_type = orig_world.heater_type
-    self.sim_start_time = orig_world.sim_time
-    self.sim_start_string = util.datetimeTOstring(self.sim_start_time, orig_world.timezone_short)
-    self.sim_end_time = self.sim_start_time + timedelta(minutes = timestep)
-    self.sim_end_string = util.datetimeTOstring(self.sim_end_time, orig_world.timezone_short)
-    self.glmfile = self.run_name + "/predictive_runs_lookup.glm"
-    self.energy_use_file = self.run_name + "/energy_use_for_predictions.csv"
-    self.indoor_temp = orig_world.indoor_temp
-    self.outdoor_temp = orig_world.outdoor_temp
+  def set_next_setpoints(self, new_heating_setpoint, new_cooling_setpoint):
+    '''
+    Adjusts the thermostat's heating and cooling setpoints to the values provided as arguments.
+    '''
+    print "Didn't define --set_next_setpoints-- method for this derived class!"
+
+  def final_cleanup(self, run_params, agent):
+    '''
+    Completes any remaining housekeeping.
+    '''
+    print "Didn't define --final_cleanup-- method for this derived class!"
 
 class GldWorld(World):
   def __init__(self, run_params, agent):
@@ -277,11 +256,82 @@ class GldWorld(World):
     second_world = GldWorld_TempMeas(run_params, agent)
     util.run_gld_reg(second_world.glmfile)
 
-    # Test
+    # Test to compare HVAC usage in "real" run to that of the "comfort" run
     results_file = run_params.run_name + "/" + run_params.run_name + "_results_second_run" + run_params.agent + ".csv"
     with open(results_file, 'wb') as f:
       fwriter = csv.writer(f)
     util.assess_budget(second_world, agent, results_file, self.start_control, self.end_control)
+
+class GldWorld_TempMeas(World):
+  def __init__(self, run_params, agent):
+    print "simple gld world!"
+    self.house_name = 'house_' + run_params.run_name
+    sim_file = run_params.run_name + '/' + run_params.run_name + '_sim_settings.txt'
+    with open(sim_file, 'rb') as f:
+      r = csv.reader(f, delimiter=' ')
+      self.start_year = r.next()[1]
+      self.start_month = r.next()[1]
+      self.n_months = int(r.next()[1])
+      self.timezone = r.next()[1]
+      self.tmyfile = r.next()[1]
+      self.house_size = r.next()[1]
+      self.heater_type = r.next()[1]
+
+    # Format times for GLD
+    self.timezone_short = self.timezone[:3]
+    self.start_control = parser.parse(self.start_year + "-" + self.start_month + "-01 00:00:00" + self.timezone_short)
+    self.start_control_string = util.datetimeTOstring(self.start_control, self.timezone_short)
+    self.sim_start = self.start_control - timedelta(days = 2)
+    self.sim_start_string = util.datetimeTOstring(self.sim_start, self.timezone_short)
+    self.n_days_in_months = [calendar.monthrange(int(self.start_year)+i/12, int(self.start_month)+i)[1] for i in range(self.n_months)]
+    self.end_control = self.start_control + timedelta(days = sum(self.n_days_in_months)) + timedelta(seconds = -1)
+    # debug (comment/uncomment line above):
+    # self.end_control = self.start_control + timedelta(hours=15)
+    self.end_control_string = util.datetimeTOstring(self.end_control, self.timezone_short)
+    self.sim_end = self.end_control + timedelta(hours = 3)
+    self.sim_end_string = util.datetimeTOstring(self.sim_end, self.timezone_short)
+    self.first_pause_at = util.datetimeTOstring(self.start_control, self.timezone_short)
+    self.sim_complete = False
+    self.sim_time = ""
+
+    # Format files needed
+    for file_description in ['cooling_temps_file', 'heating_temps_file', 'indoor_temps_file', 'energy_use_file']:
+      file_name = run_params.run_name + '/' + run_params.run_name + '_' + file_description[:-5] + '_' + run_params.agent + '.csv'
+      setattr(self, file_description, file_name)
+    self.floor_player_file = run_params.run_name + '/' + run_params.run_name + '_floor_player_second_run_' + run_params.agent + '.csv'
+    with open(self.energy_use_file, 'rb') as f:
+      r = csv.reader(f)
+      for row_header in r:
+        match = re.search(r'\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d', row_header[0])
+        if match:
+          break
+      with open(self.floor_player_file, 'wb') as f2:
+        fwriter = csv.writer(f2)
+        for row in r:
+          fwriter.writerow([row[0], self.house_size])
+    self.energy_use_file = run_params.run_name + '/' + run_params.run_name + '_energy_use_second_run_' + run_params.agent + '.csv'
+
+    # Write GLM file
+    self.glmfile = run_params.run_name + '/' + run_params.run_name + '_GLM_second_run_' + run_params.agent + '.glm'
+    createGLM.write_GLM_file(self, agent, "temps")
+
+class GldWorld_Predictive(World):
+  # Used only by the LookupAgent, for predictive runs
+  def __init__(self, orig_world, timestep):
+    self.run_name = orig_world.energy_use_file.split("/")[0]
+    self.house_name = 'house_predictive_runs'
+    self.timezone = orig_world.timezone
+    self.tmyfile = orig_world.tmyfile
+    self.house_size = orig_world.house_size
+    self.heater_type = orig_world.heater_type
+    self.sim_start_time = orig_world.sim_time
+    self.sim_start_string = util.datetimeTOstring(self.sim_start_time, orig_world.timezone_short)
+    self.sim_end_time = self.sim_start_time + timedelta(minutes = timestep)
+    self.sim_end_string = util.datetimeTOstring(self.sim_end_time, orig_world.timezone_short)
+    self.glmfile = self.run_name + "/predictive_runs_lookup.glm"
+    self.energy_use_file = self.run_name + "/energy_use_for_predictions.csv"
+    self.indoor_temp = orig_world.indoor_temp
+    self.outdoor_temp = orig_world.outdoor_temp
 
 class EcobeeWorld(World):
   def __init__(self, run_params, agent):
@@ -297,7 +347,11 @@ class EcobeeWorld(World):
     # TODO
     pass
 
-  def update(self):
+  def update(self, agent):
+    # TODO
+    pass
+
+  def set_next_setpoints(self, new_heating_setpoint, new_cooling_setpoint):
     # TODO
     pass
 
