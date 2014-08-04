@@ -63,9 +63,31 @@ class Agent:
     self.budget_month_used = 0.0
     self.budget_day_used = 0.0
 
+class LowestCostAgent(Agent):
+  def __init__(self, run_params):
+    print "initializing lowest cost agent"
+    self.read_settings(run_params.run_name)
+
+  def update_state(self, world):
+    pass
+
+  def get_next_setpoints(self, world):
+    return (self.min_temp, self.max_temp)
+
+class HighestComfortAgent(Agent):
+  def __init__(self, run_params):
+    print "initializing highest comfort agent"
+    self.read_settings(run_params.run_name)
+
+  def update_state(self, world):
+    pass
+
+  def get_next_setpoints(self, world):
+    return (self.preferred_low_temp, self.preferred_high_temp)
+
 class LookupAgent(Agent):
   def __init__(self, run_params):
-    print "lookup agent"
+    print "initializing lookup agent"
     self.energy_estimate = {} # Key = (outdoor_temp, indoor_temp, energy), value = (heating_setpoint, cooling_setpoint)
     self.prediction_sim_file = run_params.run_name + '/for_lookup_predictions.csv'
     self.read_settings(run_params.run_name)
@@ -126,7 +148,7 @@ class LookupAgent(Agent):
       print "table lookup successful"
       heating_setpoint, cooling_setpoint = self.energy_estimate[(round(world.outdoor_temp, 0), round(world.indoor_temp, 0), round(energy_budget, 2))]
     else:
-      pred_world = worlds.GldWorld_Predictive(world, self.timestep)
+      pred_world = worlds.GldPredictiveWorld(world, self.timestep)
       pred_world.heating_setpoint = self.preferred_low_temp
       pred_world.cooling_setpoint = self.preferred_high_temp
       if world.last_mode == "COOL": # need to cool
@@ -147,7 +169,7 @@ class LookupAgent(Agent):
 
 class QLearnAgent(Agent):
   def __init__(self, run_params):
-    print "qlearn agent"
+    print "initializing qlearn agent"
     self.read_settings(run_params.run_name)
     # TODO
 

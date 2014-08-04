@@ -23,12 +23,16 @@ class Params:
   def initialize_agent(self):
     return getattr(self, 'initialize_%s_agent' % self.agent)()
 
+  def initialize_lowest_cost_agent(self):
+    return agents.LowestCostAgent(self)
+
+  def initialize_highest_comfort_agent(self):
+    return agents.HighestComfortAgent(self)
+
   def initialize_lookup_agent(self):
-    print "initializing lookup agent"
     return agents.LookupAgent(self)
 
   def initialize_qlearn_agent(self):
-    print "initializing qlearning agent"
     return agents.QLearnAgent(self)
 
 
@@ -36,9 +40,10 @@ class Params:
     return getattr(self, 'initialize_%s' % self.world)(agent)
 
   def initialize_gld(self, agent):
-    print "initializing GridLAB-D"
     return worlds.GldWorld(self, agent)
 
+  def initialize_gld_baseline(self, agent):
+    return worlds.GldBaselineWorld(self, agent)
+
   def initialize_ecobee(self, agent):
-    print "initializing Ecobee"
     return worlds.EcobeeWorld(self, agent)

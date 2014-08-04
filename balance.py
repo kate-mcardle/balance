@@ -15,8 +15,8 @@ For example, for the run titled "run_1", there must be a directory called "run_1
 a settings file called "run_1_settings.txt".
 
 Info needed from settings input file:
-  world (gld or ecobee)
-  agent (lookup or qlearn)
+  world (gld_baseline, gld or ecobee)
+  agent (lowest_cost, highest_comfort, lookup, or qlearn)
 
 Info needed from agent settings input file:
   electricity_price ($ per kWh)
@@ -51,7 +51,7 @@ def main(argv):
   run_params = params.Params(argv[1])
   agent = run_params.initialize_agent()
   world = run_params.initialize_world(agent)
-  pprint (vars(world))
+  # pprint (vars(world))
 
   # For runtime tracking:
   starttime = datetime.now()

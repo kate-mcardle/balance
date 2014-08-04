@@ -4,9 +4,11 @@ worlds.py manages the passage of time in the agent's lifespan. The World class i
 EcobeeWorld. These classes interact with the simulator or Ecobee to get the most recent
 temperature and energy use values and set new thermostat setpoints.
 
-Additionally, the derived class GldWorld_TempMeas is provided to re-run the simulation 
-in order to record temperatures every minute, and the derived class GldWorld_Predictive
-is provided solely for the LookupAgent to use in its predictions.
+Additionally, the derived class GldTempMeasWorld is provided to re-run the simulation 
+in order to record temperatures every minute, and the derived class GldPredictiveWorld
+is provided solely for the LookupAgent to use in its predictions. The derived class 
+GldBaselineWorld is provided to run the baseline agents (LowestCostAgent and HighestComfortAgent) 
+in "regular" mode (as opposed to server mode), because it is much faster.
 '''
 
 import sys
@@ -24,6 +26,9 @@ import util
 import createGLM
 
 class World:
+  '''
+  Base class for the world used by balance; 
+  '''
   def __init__(self, run_params, agent):
     '''
     Class constructor for the world. Takes care of any setup but does not initiate the
@@ -67,7 +72,7 @@ class World:
 
 class GldWorld(World):
   def __init__(self, run_params, agent):
-    print "gld world!"
+    print "initializing GldWorld"
     self.ts_count = 0
     self.house_name = 'house_' + run_params.run_name
     sim_file = run_params.run_name + '/' + run_params.run_name + '_sim_settings.txt'
@@ -253,16 +258,17 @@ class GldWorld(World):
     cmd_resume = subprocess.call(args_resume) # subprocess.call will wait for call to finish before returning
 
     # Re-run, to measure comfort
-    second_world = GldWorld_TempMeas(run_params, agent)
+    second_world = GldTempMeasWorld(run_params, agent)
     util.run_gld_reg(second_world.glmfile)
 
-    # Test to compare HVAC usage in "real" run to that of the "comfort" run
+    # Test to compare HVAC usage in "real" run to that of the "comfort" run 
+    # (comment when confident no large difference)
     results_file = run_params.run_name + "/" + run_params.run_name + "_results_second_run" + run_params.agent + ".csv"
     with open(results_file, 'wb') as f:
       fwriter = csv.writer(f)
     util.assess_budget(second_world, agent, results_file, self.start_control, self.end_control)
 
-class GldWorld_TempMeas(World):
+class GldTempMeasWorld(World):
   def __init__(self, run_params, agent):
     print "simple gld world!"
     self.house_name = 'house_' + run_params.run_name
@@ -315,7 +321,7 @@ class GldWorld_TempMeas(World):
     self.glmfile = run_params.run_name + '/' + run_params.run_name + '_GLM_second_run_' + run_params.agent + '.glm'
     createGLM.write_GLM_file(self, agent, "temps")
 
-class GldWorld_Predictive(World):
+class GldPredictiveWorld(World):
   # Used only by the LookupAgent, for predictive runs
   def __init__(self, orig_world, timestep):
     self.run_name = orig_world.energy_use_file.split("/")[0]
@@ -333,9 +339,64 @@ class GldWorld_Predictive(World):
     self.indoor_temp = orig_world.indoor_temp
     self.outdoor_temp = orig_world.outdoor_temp
 
+class GldBaselineWorld:
+  def __init__(self, run_params, agent):
+    print "initializing GldBaselineWorld"
+    # self.ts_count = 0
+    self.house_name = 'house_' + run_params.run_name
+    sim_file = run_params.run_name + '/' + run_params.run_name + '_sim_settings.txt'
+    with open(sim_file, 'rb') as f:
+      r = csv.reader(f, delimiter=' ')
+      self.start_year = r.next()[1]
+      self.start_month = r.next()[1]
+      self.n_months = int(r.next()[1])
+      self.timezone = r.next()[1]
+      self.tmyfile = r.next()[1]
+      self.house_size = r.next()[1]
+      self.heater_type = r.next()[1]
+
+    # Format times for GLD
+    self.timezone_short = self.timezone[:3]
+    self.start_control = parser.parse(self.start_year + "-" + self.start_month + "-01 00:00:00" + self.timezone_short)
+    self.sim_start = self.start_control - timedelta(days = 2)
+    self.sim_start_string = util.datetimeTOstring(self.sim_start, self.timezone_short)
+    self.n_days_in_months = [calendar.monthrange(int(self.start_year)+i/12, int(self.start_month)+i)[1] for i in range(self.n_months)]
+    self.end_control = self.start_control + timedelta(days = sum(self.n_days_in_months)) + timedelta(seconds = -1)
+    # debug (comment/uncomment line above):
+    # self.end_control = self.start_control + timedelta(hours=15)
+    self.sim_end = self.end_control + timedelta(hours = 3)
+    self.sim_end_string = util.datetimeTOstring(self.sim_end, self.timezone_short)
+
+    # Format files needed
+    for file_description in ['energy_use_file', 'indoor_temps_file']:
+      file_name = run_params.run_name + '/' + run_params.run_name + '_' + file_description[:-5] + '_' + run_params.agent + '.csv'
+      setattr(self, file_description, file_name)
+
+    # Write GLM file
+    self.glmfile = run_params.run_name + '/' + run_params.run_name + '_GLM_' + run_params.agent + '.glm'
+    createGLM.write_GLM_file(self, agent, "baseline")
+
+    # Set sim_complete to True to immediately escape main while loop in balance.py:
+    self.sim_complete = True
+
+  def launch(self, agent):
+    util.run_gld_reg(self.glmfile)
+
+  def is_new_timestep(self):
+    return True
+
+  def update(self, agent):
+    pass
+
+  def set_next_setpoints(self, new_heating_setpoint, new_cooling_setpoint):
+    pass
+
+  def final_cleanup(self, run_params, agent):
+    pass
+
 class EcobeeWorld(World):
   def __init__(self, run_params, agent):
-    print "ecobee world!"
+    print "initializing Ecobee"
     # TODO
     # MUST DEFINE energy_use_file, indoor_temps_file, start_control, AND end_control! For final assessment
 
