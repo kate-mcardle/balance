@@ -85,12 +85,12 @@ def assess_budget(world, agent, results_file, start_assessment, end_assessment):
     total_cost = energy_used*agent.elec_prices[start_of_month.month-1]
     dollar_deviation = total_cost - agent.budgets[i]
     percent_deviation = 100 * dollar_deviation / (agent.budgets[i] + 0.0)
-    print "For " + str(start_of_month.month) + "/" + str(start_of_month.year) + "---------"
-    print "energy used = ", energy_used
-    print "budget was: ", agent.budgets[i]
-    print "total cost = ", total_cost
-    print "deviation, $ = ", dollar_deviation
-    print "deviation, % = ", percent_deviation
+    # print "For " + str(start_of_month.month) + "/" + str(start_of_month.year) + "---------"
+    # print "energy used = ", energy_used
+    # print "budget was: ", agent.budgets[i]
+    # print "total cost = ", total_cost
+    # print "deviation, $ = ", dollar_deviation
+    # print "deviation, % = ", percent_deviation
     with open(results_file, 'a') as f:
       fwriter = csv.writer(f)
       fwriter.writerow([str(start_of_month.month) + "/" + str(start_of_month.year) + ":"])
@@ -140,12 +140,12 @@ def assess_comfort(world, agent, results_file, start_assessment, end_assessment,
         elif (float(row2[temp_col]) < (agent.preferred_low_temp - 1)):
           mins += 1
           degree_mins += agent.preferred_low_temp - 1 - float(row2[temp_col])
-    print "For " + str(start_of_month.month) + "/" + str(start_of_month.year) + "---------"
-    print "minutes outside preferred range = ", mins
+    # print "For " + str(start_of_month.month) + "/" + str(start_of_month.year) + "---------"
+    # print "minutes outside preferred range = ", mins
     n_days_in_month = end_of_month.day
     percent_mins = 100 * mins / (n_days_in_month * 24 * 60.0)
-    print "percent of minutes outside preferred range = ", percent_mins
-    print "degree-minutes outside preferred range = ", degree_mins
+    # print "percent of minutes outside preferred range = ", percent_mins
+    # print "degree-minutes outside preferred range = ", degree_mins
     with open(results_file, 'a') as f:
       fwriter = csv.writer(f)
       fwriter.writerow([str(start_of_month.month) + "/" + str(start_of_month.year) + ":"])

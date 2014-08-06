@@ -51,7 +51,7 @@ def main(argv):
   run_params = params.Params(argv[1])
   agent = run_params.initialize_agent()
   world = run_params.initialize_world(agent)
-  pprint (vars(world))
+  # pprint (vars(world))
 
   # For runtime tracking:
   starttime = datetime.now()
@@ -74,9 +74,10 @@ def main(argv):
   # For runtime tracking:
   endtime = datetime.now()
   print 'world stopped at ', endtime
-  print 'time to run: ', endtime-starttime
+  print 'world runtime: ', endtime-starttime
   
   util.assess_performance(run_params, world, agent, world.start_control, world.end_control)
+  print 'balance runtime: ', datetime.now() - starttime
 
 if __name__ == '__main__':
   main(sys.argv)

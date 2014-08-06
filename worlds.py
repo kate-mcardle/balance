@@ -72,7 +72,7 @@ class World:
 
 class GldWorld(World):
   def __init__(self, run_params, agent):
-    print "initializing GldWorld"
+    # print "initializing GldWorld"
     self.ts_count = 0
     self.house_name = 'house_' + run_params.run_name
     sim_file = run_params.run_name + '/' + run_params.run_name + '_sim_settings.txt'
@@ -270,7 +270,7 @@ class GldWorld(World):
 
 class GldTempMeasWorld(World):
   def __init__(self, run_params, agent):
-    print "simple gld world!"
+    # print "simple gld world!"
     self.house_name = 'house_' + run_params.run_name
     sim_file = run_params.run_name + '/' + run_params.run_name + '_sim_settings.txt'
     with open(sim_file, 'rb') as f:
@@ -341,7 +341,7 @@ class GldPredictiveWorld(World):
 
 class GldBaselineWorld:
   def __init__(self, run_params, agent):
-    print "initializing GldBaselineWorld"
+    # print "initializing GldBaselineWorld"
     # self.ts_count = 0
     self.house_name = 'house_' + run_params.run_name
     sim_file = run_params.run_name + '/' + run_params.run_name + '_sim_settings.txt'

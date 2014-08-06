@@ -66,7 +66,7 @@ class Agent:
 
 class LowestCostAgent(Agent):
   def __init__(self, run_params):
-    print "initializing lowest cost agent"
+    # print "initializing lowest cost agent"
     self.read_settings(run_params.run_name)
 
   def update_state(self, world):
@@ -77,7 +77,7 @@ class LowestCostAgent(Agent):
 
 class HighestComfortAgent(Agent):
   def __init__(self, run_params):
-    print "initializing highest comfort agent"
+    # print "initializing highest comfort agent"
     self.read_settings(run_params.run_name)
 
   def update_state(self, world):
@@ -88,7 +88,7 @@ class HighestComfortAgent(Agent):
 
 class LookupAgent(Agent):
   def __init__(self, run_params):
-    print "initializing lookup agent"
+    # print "initializing lookup agent"
     self.energy_estimate = {} # Key = (outdoor_temp, indoor_temp, energy), value = (heating_setpoint, cooling_setpoint)
     self.prediction_sim_file = run_params.run_name + '/for_lookup_predictions.csv'
     self.read_settings(run_params.run_name)
@@ -105,7 +105,7 @@ class LookupAgent(Agent):
       else:
         self.budget_month_used += world.last_timestep_energy_used * self.elec_prices[self.current_month_index-1]
       # Reset the day's used budget to 0 and recalculate the coming day's budget
-      print "new day ", world.sim_time
+      # print "new day ", world.sim_time
       self.budget_day_used = 0.0
       self.budget_day = (self.budgets[self.current_month_index] - self.budget_month_used) / (world.n_days_in_months[self.current_month_index] - world.current_timestep_start.day + 1.0)
       self.n_timesteps_passed = 0
