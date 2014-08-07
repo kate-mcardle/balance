@@ -190,6 +190,7 @@ class GldWorld(World):
         # if (self.pause_time > self.new_timestep_start): # no longer think this makes sense...
         #   self.pause_time = self.new_timestep_start
         self.pause_string = util.datetimeTOstring(self.pause_time, self.timezone_short)
+        self.pause_time = parser.parse(self.pause_string) # to take care of daylight savings issues
         if (sim_time >= self.new_timestep_start): # Simulation has been paused on a timestep transition
           self.sim_time = sim_time
           if (sim_time == self.start_control): # Simulation has been paused at the start of control, aka start of first timestep
@@ -207,6 +208,7 @@ class GldWorld(World):
         print "clock at ", sim_time, "; pause_string = ", self.pause_string
         self.pause_time = sim_time + timedelta(seconds=10)
         self.pause_string = util.datetimeTOstring(self.pause_time, self.timezone_short)
+        self.pause_time = parser.parse(self.pause_string)
         print "updating pause_time: ", self.pause_string
         args_set_pause = ["wget","http://localhost:6267/control/pauseat="+self.pause_string, "-O", "-"]
         cmd_set_pause = subprocess.Popen(args_set_pause, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -263,7 +265,7 @@ class GldWorld(World):
 
     # Test to compare HVAC usage in "real" run to that of the "comfort" run 
     # (comment when confident no large difference)
-    results_file = run_params.run_name + "/" + run_params.run_name + "_results_second_run" + run_params.agent + ".csv"
+    results_file = run_params.run_name + "/" + run_params.run_name + "_results_second_run_" + run_params.agent + ".csv"
     with open(results_file, 'wb') as f:
       fwriter = csv.writer(f)
     util.assess_budget(second_world, agent, results_file, self.start_control, self.end_control)

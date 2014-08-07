@@ -14,17 +14,29 @@ import subprocess
 import time
 
 energy_row_tracker = 0
+cdt_start = parser.parse("2013-03-10 02:00:00")
+cdt_end = parser.parse("2013-11-03 02:00:00")
 
 def datetimeTOstring(dt, tz): # TODO This function only works for the year 2013...how to make it general?
   '''
   Converts a python datetime object and timezone to a string that can be used by GridLAB-D.
   '''
+  global cdt_start
+  global cdt_end
   dtstring = str(dt)[:19] + ' ' + tz
   # Daylight Savings Time (need to use CDT): 3/10/13 - 11/3/13
-  cdt_start = parser.parse("2013-03-10 02:00:00 CST")
-  cdt_end = parser.parse("2013-11-03 02:00:00 CST")
-  if dt >= cdt_start and dt <= cdt_end:
-    dtstring = dtstring[:-2] + 'DT'
+  # If in the 1 o'clock hour, keep as CST
+  match = re.search(r'2013-03-10 01:\d\d:\d\d', dtstring)
+  if match:
+    dtstring = dtstring[:-2] + 'ST'
+  # If 2 o'clock exactly, push to 3 am and change to CDT
+  elif dtstring[:19] == '2013-03-10 02:00:00':
+    dtstring = dtstring[:12] + '3:00:00 ' + dtstring[20] + 'DT'
+  # Do same for end of DST?-------------------------------------------------
+  # Otherwise
+  else:
+    if dt.replace(tzinfo=None) >= cdt_start and dt.replace(tzinfo=None) <= cdt_end:
+      dtstring = dtstring[:-2] + 'DT'
   return dtstring
 
 def get_last_second_of_month(dt, tz):
