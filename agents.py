@@ -170,33 +170,50 @@ class LookupAgent(Agent):
       heating_setpoint = pred_world.heating_setpoint
     return (heating_setpoint, cooling_setpoint)
 
+class RandomAgent(Agent):
+  def __init__(self, run_params):
+    print "initializing random agent"
+    self.read_settings(run_params.run_name)
+    self.valid_heating_setpoints = [self.min_temp + i for i in range(self.preferred_low_temp - self.min_temp + 1)]
+    self.valid_cooling_setpoints = [self.preferred_high_temp + i for i in range(self.max_temp - self.preferred_high_temp + 1)]
+    self.valid_setpoints = [r for r in itertools.product(self.valid_heating_setpoints, self.valid_cooling_setpoints)]
+
+  def update_state(self, world):
+    pass
+
+  def get_next_setpoints(self, world):
+    return random.choice(self.valid_setpoints)
+
 class QLearnAgent(Agent):
   def __init__(self, run_params):
     '''
     gamma = discount factor
     alpha = learning rate
     epsilon = exploration rate
+    state = (indoor temp, outdoor temp, budget); temps are rounded to nearest integer, budget rounded to nearest cent
     '''
     print "initializing qlearn agent"
     self.read_settings(run_params.run_name)
     self.valid_heating_setpoints = [self.min_temp + i for i in range(self.preferred_low_temp - self.min_temp + 1)]
     self.valid_cooling_setpoints = [self.preferred_high_temp + i for i in range(self.max_temp - self.preferred_high_temp + 1)]
     self.valid_setpoints = [r for r in itertools.product(self.valid_heating_setpoints, self.valid_cooling_setpoints)]
+    self.cool_setpoint_pairs = [r for r in itertools.product([self.preferred_low_temp], self.valid_cooling_setpoints)]
+    self.heat_setpoint_pairs = [r for r in itertools.product(self.valid_heating_setpoints, [self.preferred_high_temp])]
     self.gamma = .9
     self.alpha = 0.5
-    self.epsilon = .5
+    self.epsilon = .75
     self.qValues = defaultdict(lambda : 0)
 
   def get_qValue(self, state, setpoint_pair):
     return self.qValues[(state, setpoint_pair)]
 
-  def get_max_qValue(self, state):
-    return max(self.get_qValue(state, setpoint_pair) for setpoint_pair in self.valid_setpoints)
+  def get_max_qValue(self, state, setpoints):
+    return max(self.get_qValue(state, setpoint_pair) for setpoint_pair in setpoints)
 
   def update_state(self, world):
     # Calculate reward:
     if hasattr(self, "budget_timestep"):
-      reward = -100*abs(self.budget_timestep - world.last_timestep_energy_used) - (self.preferred_high_temp - world.cooling_setpoint) - (world.heating_setpoint - self.preferred_low_temp)
+      reward = -100*abs(self.budget_timestep - world.last_timestep_energy_used * self.elec_prices[self.current_month_index]) - (self.preferred_high_temp - world.cooling_setpoint) - (world.heating_setpoint - self.preferred_low_temp)
       last_state = (round(self.last_indoor_temp, 0), round(self.last_outdoor_temp, 0), round(self.budget_timestep, 2))
 
     # If start of new month, reset the month's used budget to 0 and increment the current month index
@@ -206,28 +223,44 @@ class QLearnAgent(Agent):
       self.budget_month_used = 0.0
       self.current_month_index += 1
       self.n_timesteps_in_month = self.n_timesteps_in_day * world.n_days_in_months[self.current_month_index]
+      # Go back to mostly exploring new settings
+      self.epsilon = 0.75
     else:
       self.n_timesteps_passed += 1
       self.budget_month_used += world.last_timestep_energy_used * self.elec_prices[self.current_month_index]
     self.budget_timestep = (self.budgets[self.current_month_index] - self.budget_month_used) / (self.n_timesteps_in_month - self.n_timesteps_passed)
     
+    # If start of 4th day of month, stop exploring and act optimally (given knowledge)
+    if world.current_timestep_start.hour == 0 and world.current_timestep_start.minute == 0 and world.current_timestep_start.day == 4:
+      self.epsilon = 0.0
+
     # As long as it's not the very first timestep, update the q-value for the previous (state, action, next state, reward)
     if hasattr(self, "last_outdoor_temp"):
       next_state = (round(world.indoor_temp, 0), round(world.outdoor_temp, 0), round(self.budget_timestep, 2))
-      new_sample = reward + self.gamma * self.get_max_qValue(next_state)
+      if world.last_mode == "COOL": # need to cool
+        setpoints = self.cool_setpoint_pairs
+      else:
+        setpoints = self.heat_setpoint_pairs
+      new_sample = reward + self.gamma * self.get_max_qValue(next_state, setpoints)
       self.qValues[(last_state, (world.heating_setpoint, world.cooling_setpoint))] = (1-self.alpha)*self.get_qValue(last_state, (world.heating_setpoint, world.cooling_setpoint)) + self.alpha*new_sample
     
     self.last_outdoor_temp = world.outdoor_temp
     self.last_indoor_temp = world.indoor_temp
 
   def get_next_setpoints(self, world): # equivalent to getAction
+    # Determine if heating or cooling is needed - there may be a better way to do this
+    if world.last_mode == "COOL": # need to cool
+      setpoints = self.cool_setpoint_pairs
+    else:
+      setpoints = self.heat_setpoint_pairs
+
     if random.random() < self.epsilon: # must not be "<=" because after training, epsilon will be 0 - never want this to be true
-      return random.choice(self.valid_setpoints)
+      return random.choice(setpoints)
     else:
       best_setpoints = []
       state = (round(world.indoor_temp, 0), round(world.outdoor_temp, 0), round(self.budget_timestep, 2))
-      max_q = self.get_qValue(state, self.valid_setpoints[0])
-      for setpoint_pair in self.valid_setpoints:
+      max_q = self.get_qValue(state, setpoints[0])
+      for setpoint_pair in setpoints:
         q_value = self.get_qValue(state, setpoint_pair)
         if q_value > max_q:
           best_setpoints = [setpoint_pair]

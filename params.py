@@ -35,6 +35,8 @@ class Params:
   def initialize_qlearn_agent(self):
     return agents.QLearnAgent(self)
 
+  def initialize_random_agent(self):
+    return agents.RandomAgent(self)
 
   def initialize_world(self, agent):
     return getattr(self, 'initialize_%s' % self.world)(agent)
