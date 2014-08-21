@@ -213,7 +213,7 @@ class QLearnAgent(Agent):
   def update_state(self, world):
     # Calculate reward:
     if hasattr(self, "budget_timestep"):
-      reward = -100*abs(self.budget_timestep - world.last_timestep_energy_used * self.elec_prices[self.current_month_index]) - (self.preferred_high_temp - world.cooling_setpoint) - (world.heating_setpoint - self.preferred_low_temp)
+      reward = -100*abs(self.budget_timestep - world.last_timestep_energy_used * self.elec_prices[self.current_month_index]) + (self.preferred_high_temp - world.cooling_setpoint) + (world.heating_setpoint - self.preferred_low_temp)
       last_state = (round(self.last_indoor_temp, 0), round(self.last_outdoor_temp, 0), round(self.budget_timestep, 2))
 
     # If start of new month, reset the month's used budget to 0 and increment the current month index

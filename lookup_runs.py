@@ -36,17 +36,17 @@ print 'starting runs at: ', runs_start_time
 
 # print "MPL_prefersWarm_bMin: lookup agent"
 # balance.main([0,"MPL_prefersWarm_bMin"])
-print "MPL_prefersWarm_b1: lookup agent"
-balance.main([0,"MPL_prefersWarm_b1"])
-print "MPL_prefersWarm_b2: lookup agent"
-balance.main([0,"MPL_prefersWarm_b2"])
-print "MPL_prefersWarm_bMax: lookup agent"
-balance.main([0,"MPL_prefersWarm_bMax"])
+# print "MPL_prefersWarm_b1: lookup agent"
+# balance.main([0,"MPL_prefersWarm_b1"])
+# print "MPL_prefersWarm_b2: lookup agent"
+# balance.main([0,"MPL_prefersWarm_b2"])
+# print "MPL_prefersWarm_bMax: lookup agent"
+# balance.main([0,"MPL_prefersWarm_bMax"])
 
-print 'Minneapolis runs finished at ', datetime.now()
+# print 'Minneapolis runs finished at ', datetime.now()
 
-print "STL_prefersCool_bMin: lookup agent"
-balance.main([0,"STL_prefersCool_bMin"])
+# print "STL_prefersCool_bMin: lookup agent"
+# balance.main([0,"STL_prefersCool_bMin"])
 print "STL_prefersCool_b1: lookup agent"
 balance.main([0,"STL_prefersCool_b1"])
 print "STL_prefersCool_b2: lookup agent"
