@@ -18,7 +18,10 @@ def write_GLM_file(world, agent, simType):
 
     glmfile.write('\nmodule residential {')
     # glmfile.write('\n\timplicit_enduses LIGHTS|PLUGS|DISHWASHER|MICROWAVE|FREEZER|REFRIGERATOR|RANGE|WATERHEATER|CLOTHESWASHER|DRYER;')
-    glmfile.write('\n\timplicit_enduses DISHWASHER|MICROWAVE|FREEZER|REFRIGERATOR|RANGE|WATERHEATER|CLOTHESWASHER|DRYER;')
+    # glmfile.write('\n\timplicit_enduses DISHWASHER|MICROWAVE|FREEZER|REFRIGERATOR|RANGE|WATERHEATER|CLOTHESWASHER|DRYER;')
+    # glmfile.write('\n\timplicit_enduses DISHWASHER|MICROWAVE|FREEZER|REFRIGERATOR|RANGE|WATERHEATER;')
+    # glmfile.write('\n\timplicit_enduses MICROWAVE|FREEZER|REFRIGERATOR|RANGE;')
+    glmfile.write('\n\timplicit_enduses NONE;')
     glmfile.write('\n};')
     glmfile.write('\nmodule tape;\nmodule climate;')
     glmfile.write('\nmodule assert;')

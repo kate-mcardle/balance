@@ -107,6 +107,7 @@ class GldWorld(World):
     for file_description in ['energy_use_file', 'cooling_temps_file', 'heating_temps_file', 'indoor_temps_file', 'floor_player_file']:
       file_name = run_params.run_name + '/' + run_params.run_name + '_' + file_description[:-5] + '_' + run_params.agent + '.csv'
       setattr(self, file_description, file_name)
+    # UNCOMMENT HERE!
       with open(file_name,'wb') as f: # need to reset (some of) the files at the start of every run
         fwriter = csv.writer(f)
     with open(self.floor_player_file, 'wb') as f: # this file is needed to force GLD to work correctly (bug in GLD)
@@ -237,7 +238,7 @@ class GldWorld(World):
       cmd_set_heat.communicate()
       with open(self.heating_temps_file,'a') as f:
         fwriter = csv.writer(f)
-        fwriter.writerow([util.datetimeTOstring(self.sim_time, self.timezone_short), self.heating_setpoint])
+        fwriter.writerow([util.datetimeTOstring(self.sim_time + timedelta(seconds=5), self.timezone_short), self.heating_setpoint])
     if new_cooling_setpoint != self.cooling_setpoint:
       self.cooling_setpoint = new_cooling_setpoint
       args_set_cool = ["wget", "http://localhost:6267/"+self.house_name+"/cooling_setpoint="+str(self.cooling_setpoint), "-q", "-O", "-"]
@@ -245,7 +246,7 @@ class GldWorld(World):
       cmd_set_cool.communicate()
       with open(self.cooling_temps_file,'a') as f:
         fwriter = csv.writer(f)
-        fwriter.writerow([util.datetimeTOstring(self.sim_time, self.timezone_short), self.cooling_setpoint])
+        fwriter.writerow([util.datetimeTOstring(self.sim_time + timedelta(seconds=5), self.timezone_short), self.cooling_setpoint])
 
     # This should be the last thing to happen
     self.last_timestep_energy_used = 0.0
