@@ -182,6 +182,7 @@ class GldWorld(World):
         secs = clock_delta.total_seconds()
         self.last_timestep_energy_used += self.hvac_load * secs * (1.0/3600)
         self.hvac_load = float(self.get_value("hvac_load"))
+        # for new release: self.hvac_load = float(re.sub(r'[^\d.]+', '', self.get_value("hvac_load")))
         mode = self.get_value("system_mode")
         if (mode == "COOL") or (mode == "HEAT"):
           self.last_mode = mode
@@ -226,7 +227,9 @@ class GldWorld(World):
       self.sim_complete = True
       return
     self.outdoor_temp = float(self.get_value("outdoor_temperature")[:-5])
-    self.indoor_temp = float(self.get_value("air_temperature")[:-5])    
+    # for new release: self.outdoor_temp = float(re.sub(r'[^\d\+\-.]+', '', self.get_value("outdoor_temperature")[:-5]))
+    self.indoor_temp = float(self.get_value("air_temperature")[:-5])
+    # for new release: self.indoor_temp = float(re.sub(r'[^\d\+\-.]+', '', self.get_value("air_temperature")[:-5]))    
     self.current_timestep_start = self.new_timestep_start    
     self.new_timestep_start += timedelta(minutes=agent.timestep)
 

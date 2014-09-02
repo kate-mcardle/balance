@@ -50,6 +50,7 @@ import util
 def main(argv):
   run_params = params.Params(argv[1])
   agent = run_params.initialize_agent()
+  pprint (vars(agent))
   world = run_params.initialize_world(agent)
   # pprint (vars(world))
 

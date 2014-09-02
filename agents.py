@@ -191,6 +191,7 @@ class QLearnAgent(Agent):
     alpha = learning rate
     epsilon = exploration rate
     state = (indoor temp, outdoor temp, budget); temps are rounded to nearest integer, budget rounded to nearest cent
+    setpoint_pair = (heating_setpoint, cooling_setpoint)
     '''
     print "initializing qlearn agent"
     self.read_settings(run_params.run_name)
@@ -202,7 +203,8 @@ class QLearnAgent(Agent):
     self.gamma = .9
     self.alpha = 0.5
     self.epsilon = .75
-    self.qValues = defaultdict(lambda : 0)
+    self.default_qValue = -999999
+    self.qValues = defaultdict(lambda : self.default_qValue)
 
   def get_qValue(self, state, setpoint_pair):
     return self.qValues[(state, setpoint_pair)]
@@ -213,7 +215,11 @@ class QLearnAgent(Agent):
   def update_state(self, world):
     # Calculate reward:
     if hasattr(self, "budget_timestep"):
-      reward = -100*abs(self.budget_timestep - world.last_timestep_energy_used * self.elec_prices[self.current_month_index]) + (self.preferred_high_temp - world.cooling_setpoint) + (world.heating_setpoint - self.preferred_low_temp)
+      # reward = -500*abs(self.budget_timestep - world.last_timestep_energy_used * self.elec_prices[self.current_month_index]) + (self.preferred_high_temp - world.cooling_setpoint) + (world.heating_setpoint - self.preferred_low_temp)
+      reward = -500*abs(self.budget_timestep - world.last_timestep_energy_used * self.elec_prices[self.current_month_index]) - (self.preferred_high_temp - world.cooling_setpoint)**2 - (world.heating_setpoint - self.preferred_low_temp)**2
+      # DEBUG:
+      # cost_diff = self.budget_timestep - world.last_timestep_energy_used * self.elec_prices[self.current_month_index]
+      # print "budget = ", self.budget_timestep, ", used = ", world.last_timestep_energy_used*self.elec_prices[self.current_month_index], ", diff = ", cost_diff, ", reward = ", reward
       last_state = (round(self.last_indoor_temp, 0), round(self.last_outdoor_temp, 0), round(self.budget_timestep, 2))
 
     # If start of new month, reset the month's used budget to 0 and increment the current month index
@@ -237,7 +243,7 @@ class QLearnAgent(Agent):
     # As long as it's not the very first timestep, update the q-value for the previous (state, action, next state, reward)
     if hasattr(self, "last_outdoor_temp"):
       next_state = (round(world.indoor_temp, 0), round(world.outdoor_temp, 0), round(self.budget_timestep, 2))
-      if world.last_mode == "COOL": # need to cool
+      if world.last_mode == "COOL": # need to cool - is there a better way of doing this?
         setpoints = self.cool_setpoint_pairs
       else:
         setpoints = self.heat_setpoint_pairs
@@ -254,7 +260,7 @@ class QLearnAgent(Agent):
     else:
       setpoints = self.heat_setpoint_pairs
 
-    if random.random() < self.epsilon: # must not be "<=" because after training, epsilon will be 0 - never want this to be true
+    if random.random() < self.epsilon: # must NOT be "<=" because after training, epsilon will be 0 - never want this to be true
       return random.choice(setpoints)
     else:
       best_setpoints = []
