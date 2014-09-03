@@ -212,6 +212,30 @@ class QLearnAgent(Agent):
   def get_max_qValue(self, state, setpoints):
     return max(self.get_qValue(state, setpoint_pair) for setpoint_pair in setpoints)
 
+  def explore(self, world, run_params):
+    # TODO (maybe): Get timestamps for start and end of the year prior, to make it more "realistic" 
+    # - test if this makes any difference on results (ie does indicating a different year actually result in different weather for TMY2)
+    
+    # Write needed files:
+    for f in ["explore_cool_setpoints", "explore_heat_setpoints", "explore_results"]:
+      file_name = run_params.run_name + '/' + run_params.run_name + '_' + f + '.csv'
+      setattr(self, f+"_file", file_name)
+    for (player, setpoints) in [(self.cooling_setpoints_player, self.valid_cooling_setpoints), (self.heating_setpoints_player, self.valid_heating_setpoints)]:
+      with open(player, 'wb') as f:
+        fwriter = csv.writer(f)
+        timestamp = world.start_control
+        while (timestamp <= world.end_control):
+          timestamp_string = util.datetimeTOstring(timestamp, world.timezone_short)
+          fwriter.writerow([timestamp_string, random.choice(setpoints)])
+          timestamp += timedelta(minutes = self.timestep)
+
+    # Write GLM file
+    glmfile = run_params.run_name + '/' + run_params.run_name + '_explore_GLM.glm'
+    createGLM.write_GLM_file(world, agent, "explore")
+
+    # TODO: START HERE - run GLD offline...
+
+
   def update_state(self, world):
     # Calculate reward:
     if hasattr(self, "budget_timestep"):

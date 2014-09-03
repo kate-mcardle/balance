@@ -125,6 +125,8 @@ class GldWorld(World):
     self.glmfile = run_params.run_name + '/' + run_params.run_name + '_GLM_' + run_params.agent + '.glm'
     createGLM.write_GLM_file(self, agent, "main")
     
+    if run_params.agent == "qlearn":
+      agent.explore(self, run_params)
 
   def launch(self, agent):
     # Start GridLAB-D in server mode.
