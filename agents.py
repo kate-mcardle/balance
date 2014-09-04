@@ -217,36 +217,100 @@ class QLearnAgent(Agent):
     # - test if this makes any difference on results (ie does indicating a different year actually result in different weather for TMY2)
     
     # Write needed files:
-    for f in ["explore_cool_setpoints", "explore_heat_setpoints", "explore_results"]:
+    for f in ["explore_cool_setpoints", "explore_heat_setpoints", "explore_results", "explore_temps"]:
       file_name = run_params.run_name + '/' + run_params.run_name + '_' + f + '.csv'
       setattr(self, f+"_file", file_name)
-    for (player, setpoints) in [(self.cooling_setpoints_player, self.valid_cooling_setpoints), (self.heating_setpoints_player, self.valid_heating_setpoints)]:
+    random_cooling_setpoints = {}
+    random_heating_setpoints = {}
+    for (player, valid_setpoints, random_setpoints) in [(self.cooling_setpoints_player, self.valid_cooling_setpoints, random_cooling_setpoints), (self.heating_setpoints_player, self.valid_heating_setpoints, random_heating_setpoints)]:
       with open(player, 'wb') as f:
         fwriter = csv.writer(f)
         timestamp = world.start_control
         while (timestamp <= world.end_control):
           timestamp_string = util.datetimeTOstring(timestamp, world.timezone_short)
-          fwriter.writerow([timestamp_string, random.choice(setpoints)])
+          random_setpoint = random.choice(setpoints)
+          fwriter.writerow([timestamp_string, random_setpoint])
+          random_cooling_setpoints[timestamp] = random_setpoint
           timestamp += timedelta(minutes = self.timestep)
 
     # Write GLM file
     glmfile = run_params.run_name + '/' + run_params.run_name + '_explore_GLM.glm'
     createGLM.write_GLM_file(world, agent, "explore")
 
-    # TODO: START HERE - run GLD offline...
+    # Run GridLAB-D offline
+    util.run_gld_reg(glmfile)
 
+    # Get indoor and outdoor temps at each timestep:
+    indoor_temps = {}
+    outdoor_temps = {}
+    with open(self.explore_temps_file) as f:
+      r = csv.reader(f)
+      for row_header in r:
+        match = re.search(r'\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d', row_header[0])
+        if match:
+          ts = parser.parse(row_header[0])
+          if ts >= world.start_control:
+            indoor_temps[ts] = row_header[1]
+            outdoor_temps[ts] = row_header[2]
+            break
+      for row in r:
+        ts = parser.parse(row[0])
+        indoor_temps[ts] = row[1]
+        outdoor_temps[ts] = row[2]
+        if ts >= world.end_control:
+          break
+
+    # Update q-values sequentially:
+    current_month_index = 0
+    n_timesteps_passed = 0.0
+    budget_month_used = 0.0
+    n_timesteps_in_month = self.n_timesteps_in_day * world.n_days_in_months[current_month_index]
+    start_timestamp = world.start_control
+    start_budget = self.budgets[self.current_month_index] / n_timesteps_in_month
+    s = (round(indoor_temps[start_timestamp], 0), round(outdoor_temps[start_timestamp], 0), round(start_budget, 2))
+    while (start_timestamp < world.end_control):
+      end_timestamp = start_timestamp + timedelta(minutes = self.timestep)
+      energy_used = util.get_energy_used(self.explore_results_file, start_timestamp, end_timestamp, True)
+      elec_price = self.elec_prices[current_month_index]
+      # If end_timestamp starts a new month, reset the month's used budget to 0 and increment the current month index:
+      # THIS IS WHERE THE EPISODE WOULD END!!!!
+      if end_timestamp.hour == 0 and end_timestamp.minute == 0 and end_timestamp.day == 1:
+        n_timesteps_passed = 0.0
+        budget_month_used = 0.0
+        current_month_index += 1
+        n_timesteps_in_month = self.n_timesteps_in_day * world.n_days_in_months[current_month_index]
+      else:
+        n_timesteps_passed += 1
+        budget_month_used += energy_used * self.elec_prices[current_month_index]
+
+      end_budget = (self.budgets[current_month_index] - budget_month_used) / (n_timesteps_in_month - n_timesteps_passed)
+      cooling_setpoint = random_cooling_setpoints[start_timestamp]
+      heating_setpoint = random_heating_setpoints[start_timestamp]
+      reward = self.get_reward(start_budget, energy_used, elec_price, cooling_setpoint, heating_setpoint)
+      s_prime = (round(indoor_temps[end_timestamp], 0), round(outdoor_temps[end_timestamp], 0), round(end_budget, 2))
+      new_sample = reward + self.gamma * self.get_max_qValue(s_prime, self.valid_setpoints)
+      self.qValues[(s, (heating_setpoint, cooling_setpoint))] = (1-self.alpha)*self.get_qValue(s, (heating_setpoint, cooling_setpoint)) + self.alpha*new_sample
+
+      start_timestamp = end_timestamp
+      start_budget = end_budget
+      s = s_prime
+
+  def get_reward(self, budget_timestep, energy_used, elec_price, cooling_setpoint, heating_setpoint):
+    # return -500*abs(self.budget_timestep - world.last_timestep_energy_used * self.elec_prices[self.current_month_index]) + (self.preferred_high_temp - world.cooling_setpoint) + (world.heating_setpoint - self.preferred_low_temp)
+    # return -500*abs(self.budget_timestep - world.last_timestep_energy_used * self.elec_prices[self.current_month_index]) - (self.preferred_high_temp - world.cooling_setpoint)**2 - (world.heating_setpoint - self.preferred_low_temp)**2
+    return -500*abs(budget_timestep - energy_used * elec_price) - (self.preferred_high_temp - cooling_setpoint)**2 - (heating_setpoint - self.preferred_low_temp)**2
 
   def update_state(self, world):
     # Calculate reward:
     if hasattr(self, "budget_timestep"):
-      # reward = -500*abs(self.budget_timestep - world.last_timestep_energy_used * self.elec_prices[self.current_month_index]) + (self.preferred_high_temp - world.cooling_setpoint) + (world.heating_setpoint - self.preferred_low_temp)
-      reward = -500*abs(self.budget_timestep - world.last_timestep_energy_used * self.elec_prices[self.current_month_index]) - (self.preferred_high_temp - world.cooling_setpoint)**2 - (world.heating_setpoint - self.preferred_low_temp)**2
+      reward = self.get_reward(self.budget_timestep, world.last_timestep_energy_used, self.elec_prices[self.current_month_index], world.cooling_setpoint, world.heating_setpoint)
       # DEBUG:
       # cost_diff = self.budget_timestep - world.last_timestep_energy_used * self.elec_prices[self.current_month_index]
       # print "budget = ", self.budget_timestep, ", used = ", world.last_timestep_energy_used*self.elec_prices[self.current_month_index], ", diff = ", cost_diff, ", reward = ", reward
       last_state = (round(self.last_indoor_temp, 0), round(self.last_outdoor_temp, 0), round(self.budget_timestep, 2))
 
     # If start of new month, reset the month's used budget to 0 and increment the current month index
+    # THIS IS WHERE THE EPISODE WOULD END!!! RECALCULATE REWARD BASED ON FINAL RESULT (?)
     if world.current_timestep_start.hour == 0 and world.current_timestep_start.minute == 0 and world.current_timestep_start.day == 1:
       print "new month! ", world.sim_time 
       self.n_timesteps_passed = 0.0

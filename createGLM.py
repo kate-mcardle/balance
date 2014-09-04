@@ -119,5 +119,10 @@ def write_GLM_file(world, agent, simType):
       glmfile.write('\n\t\tproperty hvac_load, air_temperature, cooling_setpoint, heating_setpoint, outdoor_temperature, system_mode;')
       glmfile.write('\n\t\tfile ' + agent.explore_results_file + ';')
       glmfile.write('\n\t};')
+      glmfile.write('\n\tobject recorder: {')
+      glmfile.write('\n\t\tproperty air_temperature, outdoor_temperature;')
+      glmfile.write('\n\t\tfile ' + agent.explore_temps_file + ';')
+      glmfile.write('\n\t\tinterval 60;')
+      glmfile.write('\n\t};')
 
     glmfile.write('\n}')
