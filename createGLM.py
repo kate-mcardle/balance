@@ -6,7 +6,11 @@ the world's and agent's specifications, as well as the type (purpose) of simulat
 import sys
 
 def write_GLM_file(world, agent, simType):
-  with open(world.glmfile, 'wb') as glmfile:
+  if simType == "explore":
+    glmf = agent.explore_glmfile
+  else:
+    glmf = world.glmfile
+  with open(glmf, 'wb') as glmfile:
     if simType == 'main':
       glmfile.write('#set pauseat=\'' + world.first_pause_at + '\'\n')
 
@@ -109,11 +113,11 @@ def write_GLM_file(world, agent, simType):
       glmfile.write('\n\theating_setpoint ' + str(agent.preferred_low_temp) + ';')
       glmfile.write('\n\tobject player {')
       glmfile.write('\n\t\tproperty cooling_setpoint;')
-      glmfile.write('\n\t\tfile ' + agent.cooling_setpoints_player + ';')
+      glmfile.write('\n\t\tfile ' + agent.explore_cool_setpoints_file + ';')
       glmfile.write('\n\t};')
       glmfile.write('\n\tobject player {')
       glmfile.write('\n\t\tproperty heating_setpoint;')
-      glmfile.write('\n\t\tfile ' + agent.heating_setpoints_player + ';')
+      glmfile.write('\n\t\tfile ' + agent.explore_heat_setpoints_file + ';')
       glmfile.write('\n\t};')
       glmfile.write('\n\tobject recorder: {')
       glmfile.write('\n\t\tproperty hvac_load, air_temperature, cooling_setpoint, heating_setpoint, outdoor_temperature, system_mode;')

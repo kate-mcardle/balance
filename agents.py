@@ -216,29 +216,30 @@ class QLearnAgent(Agent):
     # TODO (maybe): Get timestamps for start and end of the year prior, to make it more "realistic" 
     # - test if this makes any difference on results (ie does indicating a different year actually result in different weather for TMY2)
     
+    print "starting to explore at: ", datetime.now()
     # Write needed files:
     for f in ["explore_cool_setpoints", "explore_heat_setpoints", "explore_results", "explore_temps"]:
       file_name = run_params.run_name + '/' + run_params.run_name + '_' + f + '.csv'
       setattr(self, f+"_file", file_name)
     random_cooling_setpoints = {}
     random_heating_setpoints = {}
-    for (player, valid_setpoints, random_setpoints) in [(self.cooling_setpoints_player, self.valid_cooling_setpoints, random_cooling_setpoints), (self.heating_setpoints_player, self.valid_heating_setpoints, random_heating_setpoints)]:
+    for (player, valid_setpoints, random_setpoints) in [(self.explore_cool_setpoints_file, self.valid_cooling_setpoints, random_cooling_setpoints), (self.explore_heat_setpoints_file, self.valid_heating_setpoints, random_heating_setpoints)]:
       with open(player, 'wb') as f:
         fwriter = csv.writer(f)
         timestamp = world.start_control
         while (timestamp <= world.end_control):
           timestamp_string = util.datetimeTOstring(timestamp, world.timezone_short)
-          random_setpoint = random.choice(setpoints)
+          random_setpoint = random.choice(valid_setpoints)
           fwriter.writerow([timestamp_string, random_setpoint])
-          random_cooling_setpoints[timestamp] = random_setpoint
+          random_setpoints[timestamp] = random_setpoint
           timestamp += timedelta(minutes = self.timestep)
 
     # Write GLM file
-    glmfile = run_params.run_name + '/' + run_params.run_name + '_explore_GLM.glm'
-    createGLM.write_GLM_file(world, agent, "explore")
+    self.explore_glmfile = run_params.run_name + '/' + run_params.run_name + '_explore_GLM.glm'
+    createGLM.write_GLM_file(world, self, "explore")
 
     # Run GridLAB-D offline
-    util.run_gld_reg(glmfile)
+    util.run_gld_reg(self.explore_glmfile)
 
     # Get indoor and outdoor temps at each timestep:
     indoor_temps = {}
@@ -250,13 +251,13 @@ class QLearnAgent(Agent):
         if match:
           ts = parser.parse(row_header[0])
           if ts >= world.start_control:
-            indoor_temps[ts] = row_header[1]
-            outdoor_temps[ts] = row_header[2]
+            indoor_temps[ts] = float(row_header[1])
+            outdoor_temps[ts] = float(row_header[2])
             break
       for row in r:
         ts = parser.parse(row[0])
-        indoor_temps[ts] = row[1]
-        outdoor_temps[ts] = row[2]
+        indoor_temps[ts] = float(row[1])
+        outdoor_temps[ts] = float(row[2])
         if ts >= world.end_control:
           break
 
@@ -266,9 +267,9 @@ class QLearnAgent(Agent):
     budget_month_used = 0.0
     n_timesteps_in_month = self.n_timesteps_in_day * world.n_days_in_months[current_month_index]
     start_timestamp = world.start_control
-    start_budget = self.budgets[self.current_month_index] / n_timesteps_in_month
+    start_budget = self.budgets[self.current_month_index] / (n_timesteps_in_month + 0.0)
     s = (round(indoor_temps[start_timestamp], 0), round(outdoor_temps[start_timestamp], 0), round(start_budget, 2))
-    while (start_timestamp < world.end_control):
+    while (start_timestamp < world.end_control-timedelta(minutes = self.timestep)):
       end_timestamp = start_timestamp + timedelta(minutes = self.timestep)
       energy_used = util.get_energy_used(self.explore_results_file, start_timestamp, end_timestamp, True)
       elec_price = self.elec_prices[current_month_index]
@@ -294,6 +295,7 @@ class QLearnAgent(Agent):
       start_timestamp = end_timestamp
       start_budget = end_budget
       s = s_prime
+    print "done exploring at ", datetime.now()
 
   def get_reward(self, budget_timestep, energy_used, elec_price, cooling_setpoint, heating_setpoint):
     # return -500*abs(self.budget_timestep - world.last_timestep_energy_used * self.elec_prices[self.current_month_index]) + (self.preferred_high_temp - world.cooling_setpoint) + (world.heating_setpoint - self.preferred_low_temp)
