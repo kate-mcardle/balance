@@ -85,8 +85,8 @@ def get_energy_used(use_file, start_calc, end_calc, forBudget = False, timestamp
         end_time = parser.parse(row2[timestamp_col])
         td = end_time - start_time
         secs = td.total_seconds()
-        if forBudget and secs > 1200:
-          print "HVAC on for too long?? Check ", start_time
+        # if forBudget and secs > 1200:
+        #   print "HVAC on for too long?? Check ", start_time
         kWh += float(row1[hvac_load_col].strip('+')) * secs * (1.0/3600)
       if (parser.parse(row2[timestamp_col]) >= end_calc):
         break

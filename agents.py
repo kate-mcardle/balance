@@ -203,7 +203,7 @@ class QLearnAgent(Agent):
     self.gamma = .9
     self.alpha = 0.5
     self.epsilon = .75
-    self.default_qValue = -999999
+    self.default_qValue = 0
     self.qValues = defaultdict(lambda : self.default_qValue)
 
   def get_qValue(self, state, setpoint_pair):
@@ -233,6 +233,7 @@ class QLearnAgent(Agent):
           fwriter.writerow([timestamp_string, random_setpoint])
           random_setpoints[timestamp] = random_setpoint
           timestamp += timedelta(minutes = self.timestep)
+    print "finished writing player files at ", datetime.now()
 
     # Write GLM file
     self.explore_glmfile = run_params.run_name + '/' + run_params.run_name + '_explore_GLM.glm'
@@ -240,6 +241,7 @@ class QLearnAgent(Agent):
 
     # Run GridLAB-D offline
     util.run_gld_reg(self.explore_glmfile)
+    print "finished running GLD offline at ", datetime.now()
 
     # Get indoor and outdoor temps at each timestep:
     indoor_temps = {}
@@ -260,8 +262,10 @@ class QLearnAgent(Agent):
         outdoor_temps[ts] = float(row[2])
         if ts >= world.end_control:
           break
+    print "finished reading indoor and outdoor temps at ", datetime.now()
 
     # Update q-values sequentially:
+    util.energy_row_tracker = 0
     current_month_index = 0
     n_timesteps_passed = 0.0
     budget_month_used = 0.0
